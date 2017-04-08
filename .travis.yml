@@ -1,14 +1,23 @@
-os:
-- linux
-- osx
+matrix
+ os:
+ - linux
 
-dist: trusty
+ dist: trusty
+
+ compiler :
+ - g++
+ - clang++
+
+matrix
+ os:
+ - osx
+
+ dist: trusty
+
+ compiler :
+ - g++
+ - clang++
 
 language: cpp
 
 script: make
-
-compiler :
-- g++-4.8
-- clang++
-
