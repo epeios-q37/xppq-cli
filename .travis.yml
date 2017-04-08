@@ -3,6 +3,6 @@ language: cpp
 script: make
 
 compiler :
-	- g++
-	- clang++
+- g++
+- clang++
 
