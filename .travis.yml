@@ -9,6 +9,6 @@ language: cpp
 script: make
 
 compiler :
-- g++-4.8
+- g++
 - clang++
 
