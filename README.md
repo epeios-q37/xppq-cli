@@ -1,2 +1,2 @@
 # xppq-cli
-The Epeios XML preprocessor with command-line interface
+The Epeios XML preprocessor with command-line interface.
