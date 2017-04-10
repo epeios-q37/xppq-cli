@@ -44,7 +44,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>COPYRIGHT_YEARS="C";VERSION="V";E_ST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>E_DEBUG;COPYRIGHT_YEARS="C";VERSION="V";E_ST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
     </ClCompile>
     <Link>
