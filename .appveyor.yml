@@ -4,3 +4,8 @@ platform:
 
 configuration: Release
 
+os :
+- Visual Studio 2013
+- Visual Studio 2015
+- Visual Studio 2017
+
