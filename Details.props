@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns:xpp="http://q37.info/xppq" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PreprocessorDefinitions>VERSION="20170406";COPYRIGHT_YEARS="2007-2016";IDENTIFIER="ec7f0749-e8eb-4430-a7dc-d0583e7742b2";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+</Project>
