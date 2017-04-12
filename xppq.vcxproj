@@ -18,6 +18,7 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <Import Project="Windows.targets"/>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{6a7a23b6-fdcc-4a57-bf2b-ad516de3e9a2}</ProjectGuid>
     <RootNamespace>xppq</RootNamespace>
@@ -127,6 +128,5 @@
     <ClCompile Include="src/epeios/scltool.cpp"/>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets"/>
-  <Import Project="Windows.targets"/>
   <Import Project="Details.props"/>
 </Project>
