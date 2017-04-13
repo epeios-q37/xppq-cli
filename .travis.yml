@@ -1,13 +1,12 @@
 matrix:
   include: 
     - os: linux
-      compiler :
+      dist: trusty
+      compiler:
         - g++
         - clang++
     - os: osx
       compiler: clang++  
-
-dist: trusty
 
 language: cpp
 
