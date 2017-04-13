@@ -2,9 +2,9 @@ matrix:
   include: 
     - os: linux
       dist: trusty
-      compiler:
-        - g++
-        - clang++
+      compiler: g++
+    - os: linux
+      compiler: clang++
     - os: osx
       compiler: clang++  
 
