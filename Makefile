@@ -1,4 +1,4 @@
-#	Copyright (C) 2007-2016 Claude SIMON (http://q37.info/contact/).
+#	Copyright (C) 2007-2017 Claude SIMON (http://q37.info/contact/).
 #
 #	This file is part of XPPq.
 #
@@ -379,7 +379,7 @@ ifeq ("$(target)","$(Android)")
 endif
 
 copt += -DVERSION=\""20170831"\"
-copt += -DCOPYRIGHT_YEARS=\""2007-2016"\"
+copt += -DCOPYRIGHT_YEARS=\""2007-2017"\"
 copt += -DIDENTIFIER=\""4e0195ad-2b3d-4fc2-8b1f-73a59bd765fe"\"
 
 ifndef EPEIOS_SRC

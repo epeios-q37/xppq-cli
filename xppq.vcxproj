@@ -21,7 +21,7 @@
   <Import Project="Windows.targets"/>
   <Import Project="Details.props"/>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>933fb809-4c9e-406c-83ce-5c898d38090c</ProjectGuid>
+    <ProjectGuid>3c403ea4-1b44-4b8b-9760-1fcae3af33c5</ProjectGuid>
     <RootNamespace>xppq</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props"/>
