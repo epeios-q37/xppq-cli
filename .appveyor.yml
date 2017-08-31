@@ -31,10 +31,10 @@ after_build:
 - set dir=%target%
 - mkdir %dir%
 - copy %affix%.exe %dir%
-- 7z a -ttar -so dummy %dir% | 7z a -si %target%.tar.gz
+- 7z a %target%.zip %dir%
 
 artifacts:
-- path: '*.tar.gz'
+- path: '*.zip'
 
 deploy:
   tag: v$(version)
