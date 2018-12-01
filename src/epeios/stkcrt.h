@@ -17,9 +17,23 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#define THTSUB__COMPILATION
+// STacK CRaTe
 
-#include "thtsub.h"
+#ifndef STKCRT_INC_
+# define STKCRT_INC_
 
-using namespace thtsub;
+# define STKCRT_NAME		"STKCRT"
 
+# if defined( E_DEBUG ) && !defined( STKCRT_NODBG )
+#  define STKCRT_DBG
+# endif
+
+# include "err.h"
+
+# include "stkctn.h"
+
+namespace stkcrt {
+	using namespace stkctn;
+}
+
+#endif

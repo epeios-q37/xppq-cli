@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -1522,9 +1522,11 @@ sdr::size__ xpp::_preprocessing_iflow_driver___::FDRRead(
 				qRFwk();
 #endif
 			if ( _Parsers.Amount() != 0 ) {
+				tht::sTID Owner = _CurrentParser->Flow().UndelyingFlow().Owner();
 				utf::format__ Format = _CurrentParser->GetFormat();
 				delete _CurrentParser;
 				_CurrentParser = _Parsers.Pop();
+				_CurrentParser->Flow().UndelyingFlow().Take( Owner );
 				if ( Format != utf::f_Guess ) {
 					if ( _Parser().GetFormat() == utf::f_Guess )
 						_Parser().SetFormat( Format );
@@ -1552,6 +1554,7 @@ sdr::size__ xpp::_preprocessing_iflow_driver___::FDRRead(
 		}
 
 		if ( Parser != NULL ) {
+			_CurrentParser->Flow().UndelyingFlow().Take( Parser->Flow().UndelyingFlow().Owner() );
 			_Parsers.Push( _CurrentParser );
 			_CurrentParser = Parser;
 		}
@@ -1566,7 +1569,7 @@ sdr::size__ xpp::_preprocessing_iflow_driver___::FDRRead(
 status__ xpp::Process(
 	xtf::extended_text_iflow__ &XFlow,
 	const criterions___ &Criterions,
-	xml::writer_ &Writer,
+	xml::rWriter &Writer,
 	context___ &Context )
 {
 	status__ Status = sOK;
@@ -1619,7 +1622,7 @@ static status__ Encrypt_(
 	xml::parser___ &Parser,
 	const str::string_ &Namespace,
 	const str::string_ &CypherKey,
-	xml::writer_ &Writer,
+	xml::rWriter &Writer,
 	xtf::pos__ &Position )
 {
 	status__ Status = s_Undefined;
@@ -1650,7 +1653,7 @@ qRE
 static status__ HandleCypherDirective_(
 	const str::string_ &Namespace,
 	xml::parser___ &Parser,
-	xml::writer_ &Writer,
+	xml::rWriter &Writer,
 	xtf::pos__ &Position )
 {
 	status__ Status = s_Undefined;
@@ -1700,7 +1703,7 @@ status__ xpp::Encrypt(
 	const str::string_ &Namespace,
 	flw::iflow__ &IFlow,
 	utf::format__ Format,
-	xml::writer_ &Writer,
+	xml::rWriter &Writer,
 	context___ &Context )
 {
 	status__ Status = s_Undefined;
@@ -1783,7 +1786,7 @@ status__ xpp::Encrypt(
 {
 	status__ Status = sOK;
 qRH
-	xml::writer Writer;
+	xml::rWriter Writer;
 qRB
 	Writer.Init( OFlow, Outfit, xml::e_None, xml::schKeep );
 
@@ -1804,9 +1807,9 @@ status__ xpp::Process(
 {
 	status__ Status = sOK;
 qRH
-	xml::writer Writer;
+	xml::rWriter Writer;
 qRB
-	Writer.Init( OFlow, Outfit, xml::e_None, xml::schKeep );
+	Writer.Init( OFlow, Outfit, xml::e_None, Criterions.Level, xml::schKeep );
 
 	Status = Process( XFlow, Criterions, Writer, Context );
 qRR

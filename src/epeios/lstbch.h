@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -41,8 +41,11 @@
 /****** New version ******/
 /*************************/
 
-# define qLBUNCHd( type, row ) E_LBUNCHt_( type, row )
-# define qLBUNCHw( type, row ) E_LBUNCHt( type, row )
+# define qXLBUNCHd( type, row, row_t ) list_bunch_<type, row, row_t>
+# define qXLBUNCHw( type, row, row_t ) list_bunch<type, row, row_t>
+
+# define qLBUNCHd( type, row ) qXLBUNCHd( type, row, sdr::row_t__ )
+# define qLBUNCHw( type, row ) qXLBUNCHw( type, row, sdr::row_t__ )
 
 # define qLBUNCHdl( type ) qLBUNCHd( type, sdr::sRow )
 # define qLBUNCHwl( type ) qLBUNCHw( type, sdr::sRow )

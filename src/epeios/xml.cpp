@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -440,7 +440,6 @@ static unsigned char HandleEntity_( _flow___ &Flow )
 static status__ GetValue_(
 	_flow___ &Flow,
 	bso::char__ Delimiter,
-	bso::bool__ ErrorIfSpaceInValue,
 	entities_handling__ EntitiesHandling,
 	str::string_ &Value,
 	bso::bool__ &OnlySpaces )
@@ -456,8 +455,6 @@ static status__ GetValue_(
 
 		if ( !isspace( C = Flow.Get( UTF ) ) )
 			OnlySpaces = false;
-		else if ( !OnlySpaces && ErrorIfSpaceInValue && ( C != ' ' ) )
-			return sUnexpectedCharacter;
 
 		if ( ( C == '&' ) && ( EntitiesHandling == ehReplace ) ) {
 			C = HandleEntity_( Flow );
@@ -486,7 +483,7 @@ inline status__ GetAttributeValue_(
 {	
 	bso::bool__ Dummy;
 
-	return GetValue_( Flow, Delimiter, true, EntitiesHandling, Value, Dummy );
+	return GetValue_( Flow, Delimiter, EntitiesHandling, Value, Dummy );
 }
 
 #define HANDLE( F )\
@@ -542,7 +539,7 @@ inline static status__ GetTagValue_(
 	entities_handling__ EntitiesHandling,
 	bso::bool__ &OnlySpaces )
 {
-	return GetValue_( Flow, '<', false, EntitiesHandling, Value, OnlySpaces );
+	return GetValue_( Flow, '<', EntitiesHandling, Value, OnlySpaces );
 }
 
 #define XMLNS	"xmlns"
@@ -690,6 +687,9 @@ qRB
 					_Tags.Push( _TagName );
 
 					_Token = tStartTag;
+
+					if ( _Flow.EndOfFlow() )
+						RETURN( sUnexpectedEOF );
 
 					// Pour faciliter la localisation d'une erreur.
 					if ( isspace( _Flow.View() ) )
@@ -964,7 +964,6 @@ qRB
 					HANDLE( GetTagValue_( _Flow, _Value, _EntitiesHandling, OnlySpaces ) );
 
 					if ( !OnlySpaces ) {
-
 						_TagName.Init();
 
 						if ( _Tags.IsEmpty() )
@@ -1210,36 +1209,36 @@ qRT
 qRE
 }
 
-void xml::writer_::_CloseAllTags( void )
+void xml::rWriter::CloseAllTags_( void )
 {
-	while ( Tags.Amount() != 0 )
+	while ( Tags_.Amount() != 0 )
 		PopTag();
 }
 
-void xml::writer_::_Indent( bso::size__ Amount ) const
+void xml::rWriter::Indent_( bso::size__ Amount ) const
 {
 	while ( Amount-- )
-		*S_.Flow << ' ';
+		F_() << ' ';
 }
 
-void xml::writer_::PutRawValue( flw::sIFlow &Flow )
+void xml::rWriter::PutRawValue( flw::sRFlow &Flow )
 {
-	if ( S_.TagNameInProgress ) {
-		*S_.Flow << '>';
-		S_.TagNameInProgress = false;
+	if ( TagNameInProgress_ ) {
+		F_() << '>';
+		TagNameInProgress_ = false;
 	}
 
 	flx::Copy( Flow, RF_() );
 
-	S_.TagValueInProgress = true;
+	TagValueInProgress_ = true;
 
-	_Commit();
+	Commit_();
 }
 
 namespace {
 	void TransformAndPutValue_(
-		flw::sIFlow &Flow,
-		dWriter &Writer )
+		flw::sRFlow &Flow,
+		rWriter &Writer )
 	{
 	qRH
 		flw::standalone_iflow__<> TFlow;
@@ -1255,9 +1254,9 @@ namespace {
 	}
 }
 
-void xml::writer_::PutValue( flw::sIFlow &Flow )
+void xml::rWriter::PutValue( flw::sRFlow &Flow )
 {
-	switch ( S_.SpecialCharHandling ) {
+	switch ( SpecialCharHandling_ ) {
 	case schReplace:
 		TransformAndPutValue_( Flow, *this );
 		break;
@@ -1270,7 +1269,7 @@ void xml::writer_::PutValue( flw::sIFlow &Flow )
 	}
 }
 
-void xml::writer_::PuRawValue( const value_ &Value )
+void xml::rWriter::PuRawValue( const value_ &Value )
 {
 	flx::sStringIFlow Flow;
 
@@ -1279,7 +1278,7 @@ void xml::writer_::PuRawValue( const value_ &Value )
 }
 
 
-void xml::writer_::PutValue( const value_ &Value )
+void xml::rWriter::PutValue( const value_ &Value )
 {
 	flx::sStringIFlow Flow;
 
@@ -1287,11 +1286,11 @@ void xml::writer_::PutValue( const value_ &Value )
 	PutValue( Flow );
 }
 
-void xml::writer_::PutRawAttribute(
+void xml::rWriter::PutRawAttribute(
 	const name_ &Name,
-	flw::sIFlow &Flow )
+	flw::sRFlow &Flow )
 {
-	if ( !S_.TagNameInProgress )
+	if ( !TagNameInProgress_ )
 		qRFwk();
 
 	F_() << ' ' << Name << "=\"";
@@ -1300,14 +1299,14 @@ void xml::writer_::PutRawAttribute(
 		
 	F_() << '"';
 
-	_Commit();
+	Commit_();
 }
 
 namespace {
 	void TransformAndPutAttribute_(
 		const name_ &Name,
-		flw::sIFlow &Flow,
-		dWriter &Writer )
+		flw::sRFlow &Flow,
+		rWriter &Writer )
 	{
 	qRH
 		flw::standalone_iflow__<> TFlow;
@@ -1323,11 +1322,11 @@ namespace {
 	}
 }
 
-void xml::writer_::PutAttribute(
+void xml::rWriter::PutAttribute(
 	const name_ &Name,
-	flw::sIFlow &Flow )
+	flw::sRFlow &Flow )
 {
-	switch ( S_.SpecialCharHandling ) {
+	switch ( SpecialCharHandling_ ) {
 	case schReplace:
 		TransformAndPutAttribute_( Name, Flow, *this );
 		break;
@@ -1340,7 +1339,7 @@ void xml::writer_::PutAttribute(
 	}
 }
 
-void xml::writer_::PutAttribute(
+void xml::rWriter::PutAttribute(
 	const name_ &Name,
 	const value_ &Value )
 {
@@ -1350,7 +1349,7 @@ void xml::writer_::PutAttribute(
 	PutAttribute( Name, *Flow );
 }
 
-void xml::writer_::PutRawAttribute(
+void xml::rWriter::PutRawAttribute(
 	const name_ &Name,
 	const value_ &Value )
 {
@@ -1360,11 +1359,11 @@ void xml::writer_::PutRawAttribute(
 	PutRawAttribute( Name, Flow );
 }
 
-void xml::writer_::PutCData( flw::sIFlow &Flow )
+void xml::rWriter::PutCData( flw::sRFlow &Flow )
 {
-	if ( S_.TagNameInProgress ) {
-		*S_.Flow << '>';
-		S_.TagNameInProgress = false;
+	if ( TagNameInProgress_ ) {
+		F_() << '>';
+		TagNameInProgress_ = false;
 	}
 	
 	F_() << "<![CDATA[";
@@ -1373,10 +1372,10 @@ void xml::writer_::PutCData( flw::sIFlow &Flow )
 		
 	F_() << "]]>";
 
-	_Commit();
+	Commit_();
 }
 
-void xml::writer_::PutCData( const value_ &Value )
+void xml::rWriter::PutCData( const value_ &Value )
 {
 	flx::sStringIFlow Flow;
 
@@ -1384,47 +1383,48 @@ void xml::writer_::PutCData( const value_ &Value )
 	PutCData( Flow );
 }
 
-mark__ xml::writer_::PopTag( mark__ Mark )
+sMark xml::rWriter::PopTag( sMark Mark )
 {
 qRH
 	name Name;
 qRB
-	if ( Tags.IsEmpty() )
+	if ( Tags_.IsEmpty() )
 		qRFwk();
 
-	Name.Init();
-
-	if ( Mark != Tags.Pop( Name ) )
+	if ( Mark != Tags_.Last() )
 		if ( Mark != qNIL )
 			qRFwk();
 
-	if ( S_.TagNameInProgress )
-		*S_.Flow << "/>";
-	else {
-		if ( !S_.TagValueInProgress && ( S_.Outfit == oIndent ) )
-			_Indent( Tags.Amount() );
-		*S_.Flow << "</" << Name << ">";
+	if ( TagNameInProgress_ ) {
+		F_() << "/>";
+		Tags_.Pop();
+	}  else {
+		Name.Init();
+		Tags_.Pop( Name );
+		if ( !TagValueInProgress_ && ( Outfit_ == oIndent ) )
+			Indent_( Tags_.Amount() );
+		F_() << "</" << Name << ">";
 	}
 
-	if ( S_.Outfit == oIndent )
-		*S_.Flow << txf::nl;
+	if ( Outfit_ == oIndent )
+		F_() << txf::nl;
 
-	S_.TagNameInProgress = false;
-	S_.TagValueInProgress = false;
+	Commit_();
 
-	_Commit();
+	TagNameInProgress_ = false;
+	TagValueInProgress_ = false;
 qRR
 qRT
 qRE
-	return Tags.Last();
+	return Tags_.Last();
 }
 
-void xml::writer_::Rewind( mark__ Mark )
+void xml::rWriter::Rewind( sMark Mark )
 {
 	while ( PopTag() != Mark );
 }
 
-bso::sBool dWriter::Put( rParser &Parser )
+bso::sBool xml::rWriter::Put( rParser &Parser )
 {
 	bso::sBool Continue = true, Success = false;
 
@@ -1470,7 +1470,7 @@ bso::sBool dWriter::Put( rParser &Parser )
 	return Success;
 }
 
-bso::sBool xml::dWriter::Put( xtf::extended_text_iflow__ &XFlow )
+bso::sBool xml::rWriter::Put( xtf::extended_text_iflow__ &XFlow )
 {
 	bso::sBool Success = true;
 qRH
@@ -1485,7 +1485,7 @@ qRE
 	return Success;
 }
 
-bso::sBool xml::dWriter::Put( const str::dString &XML )
+bso::sBool xml::rWriter::Put( const str::dString &XML )
 {
 	bso::sBool Success = false;
 qRH

@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -179,17 +179,17 @@ target__ cio::Target( void )
 	return ::Target_;
 }
 
-fdr::rIDriver &cio::GetInDriver( void )
+fdr::rRDriver &cio::GetInDriver( void )
 {
 	return _SInDriver;
 }
 
-fdr::rODriver &cio::GetOutDriver( void )
+fdr::rWDriver &cio::GetOutDriver( void )
 {
 	return _SOutDriver;
 }
 
-fdr::rODriver &cio::GetErrDriver( void )
+fdr::rWDriver &cio::GetErrDriver( void )
 {
 	return _SErrDriver;
 }

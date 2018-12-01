@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -185,7 +185,7 @@ namespace fdr {
 #ifdef FDR__TS
 			sTID Caller = tht::GetTID();
 
-			if ( _Mutex != mtx::UndefinedHandler ) {
+			if ( _Mutex != mtx::Undefined ) {
 				if ( TryToLock_( _Mutex ) ) {
 					if ( Owner_ != tht::Undefined )
 						qRFwk();
@@ -211,13 +211,13 @@ namespace fdr {
 #ifdef FDR__TS
 			sTID Old = Owner_;
 
-			if ( Old != tht::Undefined ) {
+//			if ( Old != tht::Undefined ) {
 
 				if ( TID == tht::Undefined )
 					TID = tht::GetTID();
 
 				Owner_ = TID;
-			}
+//			}
 
 			return Old;
 #else
@@ -243,7 +243,7 @@ namespace fdr {
 #ifdef FDR__TS
 			sTID Caller = tht::GetTID();
 
-			if ( _Mutex != mtx::UndefinedHandler ) {
+			if ( _Mutex != mtx::Undefined ) {
 				if ( IsLocked_( _Mutex ) ) {
 					if ( Owner_ != Caller )
 						qRFwk();
@@ -256,6 +256,10 @@ namespace fdr {
 # else
 			Unlock_( _Mutex );
 # endif
+		}
+		sTID Owner( void ) const
+		{
+			return Owner_;
 		}
 	};
 
@@ -285,15 +289,15 @@ namespace fdr {
 	{
 	private:
 		byte__ *_Cache;
-		size__ _Size;	// Si == '0', signale 'EOF' atteint.
+		size__ _Size;	// If == '0', report EOF.
 		size__ _Available;
 		size__ _Position;
-		size__ Red_;	// Amount of red data since last dismiss.
+		size__ Red_;	// Amount of red data since last dismiss (NOT physically red, but what was returned to user).
 		bso::sBool DismissPending_;
 		bso::sBool AutoDismissOnEOF_;	// If at 'true', 'Dismiss' is automatically called on EOF. Can be useful when the object is reused, i.e. when several 'Init(...)' are called.
 		size__ _Read(
 			size__ Wanted,
-			byte__ *Buffer )	// Si valeur retourne == 0, alors , alors 'EOF' atteint.
+			byte__ *Buffer )	// id returns 0, the EOF reached.
 		{
 			size__ Amount = 0;
 # ifdef FDR_DBG
@@ -305,8 +309,6 @@ namespace fdr {
 
 				if ( ( Amount == 0 ) && AutoDismissOnEOF_ && DismissPending_ )
 					Dismiss( true );	// Relaying dismissing to underlying level on EOF.
-				else if ( Amount != 0 )
-					DismissPending_ = true;
 
 				return Amount;
 			} else
@@ -422,14 +424,21 @@ namespace fdr {
 			return Red;
 		}
 
-		bso::bool__ _EOF( void )
+		bso::bool__ EOF_( void )
 		{
-			if ( _Available ) 
+			Lock();
+
+			if ( _Available ) {
+				DismissPending_ = true;
 				return false;
-			else if ( _Size == 0 )
+			} else if ( ( _Size != 0 ) && (_FillCache( 0 ) != 0) ) {
+				DismissPending_ = true;
+				return false;
+			} else {
+				if ( !DismissPending_ )
+					Unlock();
 				return true;
-			else
-				return _FillCache( 0 ) == 0;
+			}
 		}
 	protected:
 		// Retourne le nombre d'octets effectivement lus. Ne retourne '0' que si plus aucune donne n'est disponibe.
@@ -442,6 +451,7 @@ namespace fdr {
 		void reset( bso::bool__ P = true ) 
 		{
 			if ( P ) {
+				_flow_driver_base__::BaseTake( tht::Undefined );	// Prevent some unwanted error due to bad due to mutex owning.
 				Dismiss( true );
 			}
 
@@ -481,7 +491,7 @@ namespace fdr {
 		{
 			return GetTID_( FDRITake( Owner ), BaseTake( Owner ) );
 		}
-		void Dismiss( bso::sBool Unlock )
+		void Dismiss( bso::sBool Unlock )	// When 'Unlock' is set to false, the 'Red_' value is NOT set to 0.
 		{
 			if ( DismissPending_ ) {
 				if ( _Cache != NULL ) {
@@ -495,7 +505,8 @@ namespace fdr {
 				qRE
 				}
 
-				Red_ = 0;
+				if ( Unlock )
+					Red_ = 0;
 
 				DismissPending_ = false;
 			}
@@ -509,9 +520,7 @@ namespace fdr {
 			if ( Wanted < 1 )
 				qRFwk();
 #endif
-			Lock();
-
-			if ( _EOF() )
+			if ( EOF_() )
 				return 0;
 
 			switch ( Behavior ) {
@@ -554,9 +563,7 @@ namespace fdr {
 		}
 		bso::bool__ EndOfFlow( void )
 		{
-			Lock();
-
-			return _EOF();
+			return EOF_();
 		}
 		bso::bool__ IFlowIsLocked( void )	// Simplifie l'utilisation de 'ioflow_driver_...'
 		{
@@ -591,6 +598,7 @@ namespace fdr {
 	private:
 		bso::bool__ _Initialized;	// Pour viter des 'pure virtual function call'.
 		bso::sBool CommitPending_;
+		size__ Written_;	// Amount of data written since last commit.
 	protected:
 		// Returns amount of written data. Returns '0' only when no other data can be written (deconnection...), otherwise must block.
 		virtual size__ FDRWrite(
@@ -609,6 +617,7 @@ namespace fdr {
 			_Initialized = false;
 			CommitPending_ = false;
 			_flow_driver_base__::reset( P );
+			Written_ = 0;
 		}
 		E_CVDTOR( oflow_driver_base___ );
 		void Init( thread_safety__ ThreadSafety )
@@ -619,10 +628,8 @@ namespace fdr {
 			CommitPending_ = false;
 			_flow_driver_base__::Init( ThreadSafety );
 		}
-		bso::sBool Commit( bso::sBool Unlock )
+		void Commit( bso::sBool Unlock )	// When 'Unlock' is set to false, the 'Written_' value is NOT set to 0.
 		{
-			bso::sBool Success = false;
-
 			if ( CommitPending_ ) {
 				if ( _Initialized ) {
 				qRH
@@ -636,10 +643,10 @@ namespace fdr {
 				}
 
 				CommitPending_ = false;
-			} else
-				Success = true;
 
-			return Success;
+				if ( Unlock )
+					Written_ = 0;
+			}
 		}
 		size__ Write(
 			const byte__ *Buffer,
@@ -647,7 +654,11 @@ namespace fdr {
 		{
 			Lock();
 			CommitPending_ = true;
-			return FDRWrite( Buffer, Maximum );
+			Maximum = FDRWrite( Buffer, Maximum );
+
+			Written_ += Maximum;
+
+			return Maximum;
 		}
 		sTID OTake( sTID Owner )
 		{
@@ -656,6 +667,11 @@ namespace fdr {
 		bso::bool__ OFlowIsLocked( void )	// Simplifie l'utilisation de 'ioflow_driver_...'
 		{
 			return IsLocked();
+		}
+		// Returns amount of data written since last commit.
+		size__ AmountWritten( void ) const
+		{
+			return Written_;
 		}
 	};
 
@@ -714,18 +730,18 @@ namespace fdr {
 
 namespace fdr {
 # if 1	// Deprecated.
-	typedef fdr::iflow_driver___<> rIFlow;
-	typedef fdr::oflow_driver___<> rOFlow; 
-	typedef fdr::ioflow_driver___<> rFlow;
+	typedef fdr::iflow_driver___<> rRFlow;
+	typedef fdr::oflow_driver___<> rWFlow; 
+	typedef fdr::ioflow_driver___<> rRWFlow;
 # endif
 
-	typedef fdr::iflow_driver_base___ rIDriver;
-	typedef fdr::oflow_driver_base___ rODriver; 
-	typedef fdr::ioflow_driver_base___ rIODriver;
+	typedef fdr::iflow_driver_base___ rRDriver;
+	typedef fdr::oflow_driver_base___ rWDriver; 
+	typedef fdr::ioflow_driver_base___ rRWDriver;
 
-	typedef fdr::iflow_driver___<> rIDressedDriver;
-	typedef fdr::oflow_driver___<> rODressedDriver;
-	typedef fdr::ioflow_driver___<> rIODressedDriver;
+	typedef fdr::iflow_driver___<> rRDressedDriver;
+	typedef fdr::oflow_driver___<> rWDressedDriver;
+	typedef fdr::ioflow_driver___<> rRWDressedDriver;
 
 	typedef fdr::size__ sSize;
 	typedef fdr::byte__ sByte;
@@ -733,27 +749,27 @@ namespace fdr {
 	typedef fdr::thread_safety__ eThreadSafety;
 
 	void Copy_(
-		rIDriver &IDriver,
+		rRDriver &RDriver,
 		sByte *Buffer,
 		sSize BufferSize,
-		rODriver &ODriver );
+		rWDriver &WDriver );
 
 
 	template <int BufferSize = 1024> inline void Copy(
-		fdr::rIDriver &IDriver,
-		fdr::rODriver &ODriver )
+		fdr::rRDriver &RDriver,
+		fdr::rWDriver &WDriver )
 	{
 		fdr::byte__ Buffer[BufferSize];
 
-		Copy_( IDriver, Buffer, BufferSize, ODriver );
+		Copy_( RDriver, Buffer, BufferSize, WDriver );
 	}
 
 	void Purge_(
-		rIDriver &IDriver,
+		rRDriver &RDriver,
 		sByte *Buffer,
 		sSize BufferSize );
 
-	template <int BufferSize = 1024> inline void Purge( fdr::rIDriver &Driver )
+	template <int BufferSize = 1024> inline void Purge( fdr::rRDriver &Driver )
 	{
 		fdr::byte__ Buffer[BufferSize];
 

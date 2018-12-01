@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -26,17 +26,17 @@
 using namespace fdr;
 
 void fdr::Copy_(
-	rIDriver &IDriver,
+	rRDriver &IDriver,
 	sByte *Buffer,
 	sSize BufferSize,
-	rODriver &ODriver )
+	rWDriver &ODriver )
 {
 	while ( !IDriver.EndOfFlow() )
 		ODriver.Write( Buffer, IDriver.Read( BufferSize, Buffer, fdr::bNonBlocking ) );
 }
 
 void fdr::Purge_(
-	rIDriver &Driver,
+	rRDriver &Driver,
 	sByte *Buffer,
 	sSize BufferSize )
 {

@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -34,6 +34,7 @@
 # include "rgstry.h"
 # include "scllocale.h"
 # include "sclerror.h"
+# include "scli.h"
 # include "sclrgstry.h"
 
 # include "plgn.h"
@@ -43,10 +44,6 @@
 /***************/
 
 namespace sclmisc {
-	// Three below items MUST be defined by user.
-	extern const char *SCLMISCTargetName;
-	extern const char *SCLMISCProductName;
-	extern const char *SCLMISCOrganizationName;
 
 	bso::bool__ IsInitialized( void );
 
@@ -80,7 +77,7 @@ namespace sclmisc {
 		return sclerror::GetPendingErrorTranslation( GetBaseLanguage(), Translation, ErrHandling );
 	}
 
-	bso::sBool DisplaySCLBasePendingError( txf::sOFlow &Flow = cio::CErr );
+	bso::sBool DisplaySCLBasePendingError( txf::sWFlow &Flow = cio::CErr );
 
 	// To use as 'action' parameter for the 'qRFE(...)' macro to display the file/line of an error.
 	void ErrFinal( void );
@@ -209,37 +206,34 @@ namespace sclmisc {
 		const char *LocaleDirectory,
 		xtf::extended_text_iflow__ &RegistryFlow,
 		const char *RegistryDirectory,
-		const fnm::name___ &BinPath );
+		const fnm::name___ &BinPath,
+		const scli::sInfo &Info );
 
 	void Initialize(
 		const sRack &Rack,
 		const fnm::name___ &BinPath,
+		const scli::sInfo &Info,
 		qRPD );
 
-	// Counter-part of 'Initalize'.
-	void Quit( void );
+	// Counter-part of 'Initialize'.
+	void Quit( const scli::sInfo &Info );
 
-	// Store the content of the 'lastign' registry level as application data.
-	void StoreLastingRegistry( void );
+	// Store the content of the 'lasting' registry level as application data.
+	void StoreLastingRegistry( const scli::sInfo &Info );
 
 	// Deletes the file which contains the lasting registry.
 	void DumpLastingRegistryFile(
-		txf::sOFlow &Flow,
-		const char *Target = SCLMISCTargetName,
-		const char *Product = SCLMISCProductName,
-		const char *Organization = SCLMISCOrganizationName );
+		txf::sWFlow &Flow,
+		const scli::sInfo &Info );
 
 	// Deletes the file which contains the lasting registry.
-	void DeleteLastingRegistryFile(
-		const char *Target = SCLMISCTargetName,
-		const char *Product = SCLMISCProductName,
-		const char *Organization = SCLMISCOrganizationName );
+	void DeleteLastingRegistryFile( const scli::sInfo &Info );
 
 	void DumpRegistriesAndOrLocalesIfRequired( void );
 
 	void EraseProjectRegistry( void );
 
-	enum project_type__ {
+	qENUM( ProjectType ) {
 		ptNew,			// Empty project.
 		ptPredefined,	// Use of a project defined in the 'Definitions' section in the configuration file.
 		ptRemote,		// Project stored in a file.
@@ -248,24 +242,27 @@ namespace sclmisc {
 		pt_Undefined
 	};
 
-	const char *GetLabel( project_type__ ProjectType );
+	const char *GetLabel( eProjectType ProjectType );
 
-	project_type__ GetProjectType( const str::string_ &Pattern );
+	eProjectType GetProjectType( const str::string_ &Pattern );
 
 	void LoadProject(
 		flw::iflow__ &Flow,
 		const fnm::name___ &Directory,
+		const scli::sInfo &Info,
 		str::string_ &Id );
 
 	void LoadProject(
 		const fnm::name___ &FileName,
+		const scli::sInfo &Info,
 		str::string_ &Id );
 
 	void LoadProject(
-		project_type__ ProjectType,
-		const str::string_ &ProjectFeature );
+		eProjectType ProjectType,
+		const str::string_ &ProjectFeature,
+		const scli::sInfo &Info );
 
-	void LoadProject( void );	// Load project, if applies, following configuration file indications.
+	void LoadProject( const scli::sInfo &Info );	// Load project, if applies, following configuration file indications.
 
 	using fil::GetBackupFilename;
 
@@ -279,30 +276,71 @@ namespace sclmisc {
 
 	void Load(
 		const fnm::name___ &FileName,
-		str::string_ &String );
+		str::string_ &Content );
 
 	void LoadAndTranslateTags(
 		const fnm::name___ &FileName,
 		const char *Language,
-		str::string_ &String,
+		str::string_ &Content,
 		char Marker = scllocale::DefaultMarker );
 
+	bso::sBool Load(
+		const rgstry::tentry__ &FileName,
+		const sclrgstry::registry_ &Registry,
+		sclrgstry::eNeedness Needness,
+		str::string_ &Content );
+/*
 	void Load(
 		const rgstry::tentry__ &FileName,
 		const sclrgstry::registry_ &Registry,
-		str::string_ &String );
-
-	void LoadAndTranslateTags(
+		str::string_ &Content )
+	{
+		if ( !Load( FileName, Registry, sclrgstry::nMandatory, Content ) )
+			qRGnr();
+	}
+*/
+	bso::sBool LoadAndTranslateTags(
 		const rgstry::tentry__ &FileName,
 		const sclrgstry::registry_ &Registry,
-		str::string_ &String,
+		str::string_ &Content,
+		sclrgstry::eNeedness Needness,
 		char Marker = scllocale::DefaultMarker );
+
+	inline void LoadAndTranslateTags(
+		const rgstry::tentry__ &Filename,
+		const sclrgstry::registry_ &Registry,
+		str::string_ &Content,
+		char Marker = scllocale::DefaultMarker )
+	{
+		if ( !LoadAndTranslateTags( Filename, Registry, Content, sclrgstry::nMandatory, Marker ) )
+			qRFwk();
+	}
 
 	void LoadXMLAndTranslateTags(
+		const fnm::rName &Filename,
+		const char *Language,
+		str::string_ &Content,
+		xml::sLevel Level,
+		char Marker = scllocale::DefaultMarker );
+
+	bso::sBool LoadXMLAndTranslateTags(
 		const rgstry::tentry__ &FileName,
 		const sclrgstry::registry_ &Registry,
-		str::string_ &String,
+		str::string_ &Content,
+		sclrgstry::eNeedness Needness,
+		xml::sLevel Level,
 		char Marker = scllocale::DefaultMarker );
+
+	inline void LoadXMLAndTranslateTags(
+		const rgstry::tentry__ &FileName,
+		const sclrgstry::registry_ &Registry,
+		str::string_ &Content,
+		xml::sLevel Level,
+		char Marker = scllocale::DefaultMarker )
+	{
+		if ( !LoadXMLAndTranslateTags( FileName, Registry, Content, sclrgstry::nMandatory, Level, Marker ) )
+			qRFwk();
+	}
 
 	sclrgstry::registry_ &GetRWRegistry( void );
 	const sclrgstry::registry_ &GetRegistry( void );
@@ -759,7 +797,7 @@ namespace sclmisc {
 		}
 		E_CDTOR( rODriverRack );
 		// !!! Don't forget the 'HandleError()' in 'qRR'. !!!
-		fdr::rODriver &Init( const fnm::name___ &FileName );
+		fdr::rWDriver &Init( const fnm::name___ &FileName );
 		void HandleError( void );	// A appeler  partir de 'qRR'.
 		bso::sBool IsFile( void ) const
 		{
@@ -779,7 +817,7 @@ namespace sclmisc {
 		}
 		E_CDTOR( rIDriverRack );
 		// !!! Don't forget the 'HandleError()' in 'qRR'. !!!
-		fdr::rIDriver &Init( const fnm::name___ &FileName );
+		fdr::rRDriver &Init( const fnm::name___ &FileName );
 		void HandleError( void )	// To call from' qRR'.
 		{
 			// Does nothing. For simetry with 'rODriverRack'.
@@ -790,6 +828,7 @@ namespace sclmisc {
 		}
 	};
 
+	void ExitOnSignal( void );
 }
 
 

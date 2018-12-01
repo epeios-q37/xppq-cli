@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -183,9 +183,9 @@ namespace cio {
 		return Target() != t_Undefined;
 	}
 
-	fdr::rIDriver &GetInDriver( void );
-	fdr::rODriver &GetOutDriver( void );
-	fdr::rODriver &GetErrDriver( void );
+	fdr::rRDriver &GetInDriver( void );
+	fdr::rWDriver &GetOutDriver( void );
+	fdr::rWDriver &GetErrDriver( void );
 }
 
 #endif

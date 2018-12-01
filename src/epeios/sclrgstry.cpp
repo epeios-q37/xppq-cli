@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -209,7 +209,7 @@ rgstry::level__ sclrgstry::GetRawLevel( eLevel Level )
 
 #undef C
 
-const char *sclrgstry::GetLanguage_(
+const char *sclrgstry::GetLanguage(
 	const registry_ &Registry,
 	TOL_CBUFFER___ &Buffer )
 {
@@ -345,7 +345,7 @@ void sclrgstry::Load(
 
 void sclrgstry::Load(
 	eLevel Level,
-	flw::sIFlow &Flow,
+	flw::sRFlow &Flow,
 	const fnm::name___ &Directory,
 	const char *RootPath )
 {
@@ -529,9 +529,22 @@ qRE
 bso::bool__ sclrgstry::BGetValue(
 	const registry_ &Registry,
 	const rgstry::tentry__ &Entry,
+	eNeedness Needness,
 	str::string_ &Value )
 {
-	return Registry.GetValue( Entry, Value );
+	bso::sBool Return = false;
+
+	switch ( Needness ) {
+	case nMandatory:
+		MGetValue( Registry, Entry, Value );
+		Return = true;
+		break;
+	case nOptional:
+		Return =  OGetValue( Registry, Entry, Value );
+		break;
+	}
+
+	return Return;
 }
 
 void sclrgstry::AddValue(
@@ -581,7 +594,7 @@ bso:: bool__ sclrgstry::OGetValue(
 	const rgstry::tentry__ &Entry,
 	str::string_ &Value )
 {
-	return BGetValue( Registry, Entry, Value );
+	return Registry.GetValue( Entry, Value );
 }
 
 const char *sclrgstry::OGetValue(
@@ -857,8 +870,4 @@ Q37_GCTOR( sclrgstry )
 	SetupLevel_ = Registry_.Create();
 	ArgumentsLevel_ = Registry_.CreateEmbedded();
 	RuntimeLevel_ = Registry_.CreateEmbedded();
-}
-
-namespace {
-
 }

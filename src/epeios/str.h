@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -648,9 +648,10 @@ namespace str {
 # endif
 	template <typename row> inline row Search(
 		const str::string &String,
-		const ctn::mono_container_<str::string_,row> &Strings )
+		const ctn::mono_container_<str::string_,row> &Strings,
+		sdr::sRow First = qNIL )
 	{
-		return ctn::Search<row, string_>( String, Strings );
+		return ctn::Search<row, string_>( String, Strings, First );
 	}
 
 	inline sdr::sRow NewAndInit( str::dStrings &Strings )

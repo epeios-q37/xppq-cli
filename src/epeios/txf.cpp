@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -21,4 +21,15 @@
 
 #include "txf.h"
 
+#include "flx.h"
+
 using namespace txf;
+
+sRFlow txf::RVoid;
+sWFlow txf::WVoid;
+
+qGCTOR( txf )
+{
+	RVoid.Init( flx::VoidRFlow );
+	WVoid.Init( flx::VoidWFlow );
+}

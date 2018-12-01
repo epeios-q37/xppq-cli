@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -109,14 +109,14 @@ namespace tht {
 		mtx::rHandler Mutex_;
 		void Release_( void )
 		{
-			if ( Mutex_ != mtx::UndefinedHandler )
+			if ( Mutex_ != mtx::Undefined )
 				Delete( Mutex_ );
 
-			Mutex_ = mtx::UndefinedHandler;
+			Mutex_ = mtx::Undefined;
 		}
 		void Test_( void ) const
 		{
-			if ( Mutex_ == mtx::UndefinedHandler )
+			if ( Mutex_ == mtx::Undefined )
 				qRFwk();
 		}
 	public:
@@ -126,7 +126,7 @@ namespace tht {
 			if ( P )
 				Release_();
 
-			Mutex_ = mtx::UndefinedHandler;
+			Mutex_ = mtx::Undefined;
 			ThreadID = Undefined;
 		}
 		qCDTOR( rCore_ );
@@ -296,7 +296,7 @@ namespace tht {
 				Core_.ThreadID = GetTID();
 			}
 		}
-		void Wait( void )
+		void Wait( bso::sBool IgnoreTarget = false )
 		{
 		qRH
 			rLockerHandler Locker;
@@ -306,7 +306,7 @@ namespace tht {
 			if ( Core_.ThreadID == Undefined ) {
 				Core_.Lock();
 				Core_.ThreadID = GetTID();
-			} else 	if ( Core_.ThreadID != GetTID() )
+			} else 	if ( !IgnoreTarget && ( Core_.ThreadID != GetTID() ) )
 				qRFwk();
 
 			Locker.Unlock();
@@ -322,14 +322,14 @@ namespace tht {
 		qRT
 		qRE
 		}
-		void Unblock( void )
+		void Unblock( bso::sBool IgnoreTarget = false )
 		{
 		qRH
 			rLockerHandler Locker;
 		qRB
 			Locker.Init( Locker_ );
 
-			if ( Core_.ThreadID == GetTID() )
+			if ( !IgnoreTarget && ( Core_.ThreadID == GetTID() ) )
 				qRFwk();
 
 			if ( Core_.ThreadID != Undefined )
@@ -339,6 +339,74 @@ namespace tht {
 		qRE
 		}
 	};
+
+	// One can read only when one has write, and one can write only if previous writing was red.
+	class rReadWrite
+	{
+	private:
+		mtx::rHandler Write_, Read_;
+		void Delete_( mtx::rHandler Handler )
+		{
+			if ( Handler != mtx::Undefined )
+				mtx::Delete( Handler, true );
+		}
+	public:
+		void reset( bso::sBool P = true )
+		{
+			if ( P ) {
+				Delete_( Write_ );
+				Delete_( Read_ );
+			}
+
+			Write_ = Read_ = mtx::Undefined;
+		}
+		qCDTOR( rReadWrite );
+		void Init( void )
+		{
+			Delete_( Write_ );
+			Delete_( Read_ );
+
+			Write_ = mtx::Create();
+			Read_ = mtx::Create();
+
+			mtx::Lock( Read_ );
+		}
+		bso::sBool WriteBegin( tol::sDelay Timeout = 0 )	// If != 0, returns 'false' after 'Timeout' ms, otherwise returns 'true' when locks succeeds.
+		{
+			return mtx::Lock( Write_, Timeout );
+		}
+		void WriteEnd( void )
+		{
+			mtx::Unlock( Read_ );
+		}
+		bso::sBool WriteDismiss( tol::sDelay Timeout = 0 )	// If != 0, returns 'false' after 'Timeout' ms, otherwise returns 'true' when locks succeeds.
+		{
+			if ( !WriteBegin( Timeout ) )
+				return false;
+
+			WriteEnd();
+
+			return true;
+		}
+		bso::sBool ReadBegin( tol::sDelay Timeout = 0 )	// If != 0, returns 'false' after 'Timeout' ms, otherwise returns 'true' when locks succeeds.
+		{
+			return mtx::Lock( Read_, Timeout );
+		}
+		void ReadEnd( void )
+		{
+			mtx::Unlock( Write_ );
+		}
+		bso::sBool ReadDismiss( tol::sDelay Timeout = 0 )	// If != 0, returns 'false' after 'Timeout' ms, otherwise returns 'true' when locks succeeds.
+		{
+			if ( !ReadBegin( Timeout ) )
+				return false;
+
+			ReadEnd();
+
+			return true;
+		}
+	};
+	
 }
 
 #endif

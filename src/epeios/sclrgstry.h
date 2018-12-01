@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -41,10 +41,20 @@ namespace sclrgstry {
 
 	using rgstry::tags_;
 	using rgstry::tags;
+	using rgstry::rEntry;
 
 	typedef rgstry::multi_level_registry_ registry_;
 
 	extern const char *ParametersTag;
+
+	// For the 'BGetValue(...)' function.
+	qENUM( Needness )
+	{
+		nMandatory,	// Error if the entry is not present.
+		nOptional,	// Returns true if the entry is present, false otherwise.
+		n_amount,
+		n_Undefined,
+	};
 
 #if 0
 	registry_ &GetRegistry( void );
@@ -132,7 +142,7 @@ namespace sclrgstry {
 	using rgstry::value;
 	using rgstry::value_;
 
-	const char *GetLanguage_(
+	const char *GetLanguage(
 		const registry_ &Registry,
 		TOL_CBUFFER___ &Buffer );
 
@@ -165,7 +175,7 @@ namespace sclrgstry {
 
 	void Load(
 		eLevel Level,
-		flw::sIFlow &Flow,
+		flw::sRFlow &Flow,
 		const fnm::name___ &Directory,
 		const char *RootPath );
 
@@ -244,7 +254,16 @@ namespace sclrgstry {
 	bso::bool__ BGetValue(
 		const registry_ &Registry,
 		const rgstry::tentry__ &Entry,
+		eNeedness Needness,
 		str::string_ &Value );
+
+	inline 	bso::bool__ BGetValue(
+		const registry_ &Registry,
+		const rgstry::tentry__ &Entry,
+		str::string_ &Value )
+	{
+		return BGetValue( Registry, Entry, nOptional, Value );
+	}
 
 	bso::bool__ GetValues(
 		const registry_ &Registry,

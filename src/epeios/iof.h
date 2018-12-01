@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -202,7 +202,7 @@ namespace iof {
 	};
 
 	class io_iflow___
-	: public flw::sDressedIFlow<>
+	: public flw::sDressedRFlow<>
 	{
 	private:
 		io_iflow_driver___ _Driver;
@@ -210,7 +210,7 @@ namespace iof {
 		void reset( bso::bool__ P = true )
 		{
 			_Driver.reset( P );
-			sDressedIFlow<>::reset( P );
+			sDressedRFlow<>::reset( P );
 		}
 		io_iflow___( void )
 		{
@@ -223,7 +223,7 @@ namespace iof {
 		void Init( iop::descriptor__ D )
 		{
 			_Driver.Init( D, fdr::tsDisabled );
-			sDressedIFlow<>::Init( _Driver );
+			sDressedRFlow<>::Init( _Driver );
 		}
 	};
 

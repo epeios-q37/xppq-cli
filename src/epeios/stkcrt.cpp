@@ -17,9 +17,9 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#define THTSUB__COMPILATION
+#define STKCRT_COMPILATION_
 
-#include "thtsub.h"
+#include "stkcrt.h"
 
-using namespace thtsub;
+using namespace stkcrt;
 

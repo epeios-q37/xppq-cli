@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -111,6 +111,10 @@ struct feeder__ {
 	bso::char__ Get( void )
 	{
 		return Buffer[Position++];
+	}
+	bso::char__ View( void )
+	{
+		return Buffer[Position];
 	}
 };
 

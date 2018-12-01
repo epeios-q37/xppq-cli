@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -134,7 +134,7 @@ const fnm::rName &dir::GetAppDataPath( fnm::rName &Path )
 
 namespace {
 	void BuildParts_(
-		flw::sIFlow &Flow,
+		flw::sRFlow &Flow,
 		str::dStrings &Parts )
 	{
 	qRH

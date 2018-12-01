@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -47,13 +47,17 @@
 # define XPP__PREPROCESSOR_DEFAULT_NAMESPACE	"xpp"
 #endif
 
+/*************/
+/**** OLD ****/
+/*************/
+
 namespace xpp {
 
 	typedef bso::uint__ level__;	// Imbrication level.
 
 	#define XPP_LEVEL_MAX	BSO_UINT_MAX
 
-	// NOTA : Si modifié, modifier 'GetTranslation()' en conséquent, ainsi que le contenu du ficher 'xpp.xlcl'.
+	// NOTA : Si modifiï¿½, modifier 'GetTranslation()' en consï¿½quent, ainsi que le contenu du ficher 'xpp.xlcl'.
 	enum status__ {
 		sOK = xml::sOK,
 		sNoTagsAllowedHere = xml::s_amount,
@@ -184,7 +188,7 @@ namespace xpp {
 		str::string CDataTag;
 		str::string CypherTag;
 		str::string AttributeAttribute;	//'<tag xpp:attribute="..." ...>'//
-		str::string XMLNS;	// <... xmlns:xpp="..." ...> ('xpp' ou ce qui a été choisi par l'utilisateur ...).
+		str::string XMLNS;	// <... xmlns:xpp="..." ...> ('xpp' ou ce qui a ï¿½tï¿½ choisi par l'utilisateur ...).
 		void reset( bso::bool__ P = true )
 		{
 			NamespaceWithSeparator.reset( P );
@@ -450,7 +454,7 @@ namespace xpp {
 		_repository_ &_Repository;
 		_variables_ &_Variables;
 		_qualified_preprocessor_directives___ &_Directives;
-		fnm::name___ _LocalizedFileName;	// Si le 'parser' sert à l'inclusion d'un fichier ('<xpp:expand href="...">), contient le nom du fichier inclut.
+		fnm::name___ _LocalizedFileName;	// Si le 'parser' sert ï¿½ l'inclusion d'un fichier ('<xpp:expand href="...">), contient le nom du fichier inclut.
 		fnm::name___ _Directory;
 		str::string _CypherKey;
 		bso::bool__ Preserve_;	// If at true, this means that the 'preserve' attribute in 'bloc' tag should be handled, NOT that we have to preserve
@@ -567,7 +571,7 @@ namespace xpp {
 		}
 		status__ Init(
 			xtf::extended_text_iflow__ &XFlow,
-			const fnm::name___ &LocalizedFileName,	// Si 'XFlow' est rattaché à un fichier, le nom de ce fichier (utile pour la gestion d'erreurs).
+			const fnm::name___ &LocalizedFileName,	// Si 'XFlow' est rattachï¿½ ï¿½ un fichier, le nom de ce fichier (utile pour la gestion d'erreurs).
 			const fnm::name___ &Directory,
 			const str::string_ &CypherKey,
 			bso::bool__ Preserve,
@@ -593,6 +597,14 @@ namespace xpp {
 		status__ Handle(
 			_extended_parser___ *&Parser,
 			str::string_ &Data );
+		xtf::extended_text_iflow__ &Flow( void )
+		{
+			return _Parser.Flow();
+		}
+		const xtf::extended_text_iflow__ &Flow( void ) const
+		{
+			return _Parser.Flow();
+		}
 		const str::string_ &DumpData_( void ) const
 		{
 			return _Parser.DumpData();
@@ -638,6 +650,7 @@ namespace xpp {
 	{
 		fnm::name___
 			Directory;
+		xml::sLevel Level;
 		str::string
 			CypherKey,
 			Namespace;
@@ -646,6 +659,7 @@ namespace xpp {
 		void reset( bso::bool__ P = true )
 		{
 			Directory.reset( P);
+			Level = 0;
 			CypherKey.reset( P );
 			Namespace.reset( P );
 			Preserve = false;
@@ -657,6 +671,7 @@ namespace xpp {
 		}
 		criterions___( 
 			const fnm::name___ &Directory,
+			xml::sLevel Level = 0,
 			const str::string_ &CypherKey = str::string() ,
 			const str::string_ &Namespace = str::string(),
 			bso::bool__ Preserve = false,
@@ -664,16 +679,18 @@ namespace xpp {
 		{
 			reset( false );
 
-			Init( Directory, CypherKey, Namespace, Preserve, SubstitutionTag );
+			Init( Directory, Level, CypherKey, Namespace, Preserve, SubstitutionTag );
 		}
 		void Init( 
 			const fnm::name___ &Directory,
-			const str::string_ &CypherKey = str::string() ,
+			xml::sLevel Level = 0,
+			const str::string_ &CypherKey = str::string(),
 			const str::string_ &Namespace = str::string(),
 			bso::bool__ Preserve = false,
 			bso::char__ SubstitutionTag = 0 )
 		{
 			this->Directory.Init( Directory );
+			this->Level = Level;
 			this->CypherKey.Init( CypherKey );
 			this->Namespace.Init( Namespace );
 			this->Preserve = Preserve;
@@ -694,7 +711,7 @@ namespace xpp {
 		_repository _Repository;
 		_variables _Variables;
 		str::string _Data;
-		sdr::size__ _Position;	// Position du premier caractère non lu dans le '_Data'.
+		sdr::size__ _Position;	// Position du premier caractï¿½re non lu dans le '_Data'.
 		_xparser_stack _Parsers;
 		_extended_parser___ *_CurrentParser;
 		void _DeleteParsers( void );
@@ -722,9 +739,7 @@ namespace xpp {
 		{}
 		virtual fdr::sTID FDRITake( fdr::sTID Owner ) override
 		{
-			qRVct();
-
-			return fdr::UndefinedTID;	// To avoid a warning.
+			return _Parser().Flow().UndelyingFlow().Take( Owner );
 		}
 	public:
 		void reset( bso::bool__ P = true )
@@ -764,7 +779,7 @@ namespace xpp {
 
 			Buffer.Init();
 			_Variables.Init( Criterions.Directory.UTF8( Buffer ) );
-# if 0	// A priori équivalent à ce qu'il y a dans le '#else', mais VC++ 10 détruit 'Criterions.Namespace' quand 'Criterions.IsNamespaceDefined()' est vrai. Fonctionne avec 'g++4'.
+# if 0	// A priori ï¿½quivalent ï¿½ ce qu'il y a dans le '#else', mais VC++ 10 dï¿½truit 'Criterions.Namespace' quand 'Criterions.IsNamespaceDefined()' est vrai. Fonctionne avec 'g++4'.
 			_Directives.Init( Criterions.IsNamespaceDefined() ? Criterions.Namespace : str::string( XPP__PREPROCESSOR_DEFAULT_NAMESPACE ) );
 # else
 			if ( Criterions.IsNamespaceDefined() )
@@ -836,7 +851,7 @@ namespace xpp {
 		}
 	};
 
-	// Lorsqu'une erreur s'est produite; information stockées dans 'PFlow'.
+	// Lorsqu'une erreur s'est produite; information stockï¿½es dans 'PFlow'.
 	inline void GetMeaning(
 		const preprocessing_iflow___ &PFlow,
 		lcl::meaning_ &Meaning )
@@ -856,7 +871,7 @@ namespace xpp {
 		const str::string_ &Namespace,
 		flw::iflow__ &IFlow,
 		utf::format__ Format,
-		xml::writer_ &Writer,
+		xml::rWriter &Writer,
 		context___ &Context );
 
 	status__ Encrypt(
@@ -870,7 +885,7 @@ namespace xpp {
 	status__ Process(
 		xtf::extended_text_iflow__ &XFlow,
 		const criterions___ &Criterions,
-		xml::writer_ &Writer,
+		xml::rWriter &Writer,
 		context___ &Context );
 
 	status__ Process(
@@ -883,7 +898,7 @@ namespace xpp {
 	inline status__ Process(
 		xtf::extended_text_iflow__ &XFlow,
 		const criterions___ &Criterions,
-		xml::writer_ &Writer )
+		xml::rWriter &Writer )
 	{
 		status__ Status = s_Undefined;
 	qRH
@@ -923,5 +938,15 @@ namespace xpp {
 		str::string_ &Out,
 		const criterions___ &Criterions );
 }
+
+/*************/
+/**** NEW ****/
+/*************/
+
+namespace xpp {
+	typedef preprocessing_iflow___ rIFlow;
+	typedef criterions___ rCriterions;
+}
+
 
 #endif

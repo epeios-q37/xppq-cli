@@ -1,5 +1,5 @@
 /*
-	Copyright (C) 1999-2017 Claude SIMON (http://q37.info/contact/).
+	Copyright (C) 1999 Claude SIMON (http://q37.info/contact/).
 
 	This file is part of the Epeios framework.
 
@@ -33,6 +33,8 @@
 #include "plgn.h"
 
 using namespace sclmisc;
+
+using scli::sInfo;
 
 namespace {
 	str::wString BinPath_;
@@ -118,7 +120,7 @@ void sclmisc::ErrFinal( void )
 		ERRRst();
 }
 
-bso::bool__ sclmisc::DisplaySCLBasePendingError( txf::sOFlow &Flow )
+bso::bool__ sclmisc::DisplaySCLBasePendingError( txf::sWFlow &Flow )
 {
 	bso::bool__ Exists = false;
 qRH
@@ -296,7 +298,7 @@ namespace {
 		rgstry::row__ Row = qNIL;
 		flx::E_STRING_OFLOW___ Flow;
 		txf::text_oflow__ TFlow;
-		xml::writer Writer;
+		xml::rWriter Writer;
 	qRB
 		Row = GetRegistry().Search( Level, sclrgstry::Locale );
 
@@ -379,10 +381,17 @@ namespace {
 	}
 
 	bso::sBool GetAppDataConfigurationFilename_(
+		const fnm::rName &Path,
 		fnm::rName &Name,
-		const char *Target,
-		const char *Product,
-		const char *Organization,
+		const sInfo &Info,
+		bso::sBool CreateDir )
+	{
+		return GetAppDataConfigurationFilename_( Path, Name, Info.Target(), Info.Product(), Info.Organization(), CreateDir );
+	}
+
+	bso::sBool GetAppDataConfigurationFilename_(
+		fnm::rName &Name,
+		const sInfo &Info,
 		bso::sBool CreateDir )
 	{
 		bso::sBool Exist = false;
@@ -392,7 +401,7 @@ namespace {
 		Path.Init();
 		dir::GetAppDataPath( Path );
 
-		Exist = GetAppDataConfigurationFilename_( Path, Name, Target, Product, Organization, CreateDir );
+		Exist = GetAppDataConfigurationFilename_( Path, Name, Info, CreateDir );
 	qRR
 	qRT
 	qRE
@@ -415,14 +424,14 @@ namespace {
 	qRE
 	}
 
-	void LoadAppData_( void )
+	void LoadAppData_( const sInfo Info )
 	{
 	qRH
 		fnm::rName Filename;
 	qRB
 		Filename.Init();
 
-		if ( GetAppDataConfigurationFilename_( Filename, SCLMISCTargetName, SCLMISCProductName, SCLMISCOrganizationName, false ) )
+		if ( GetAppDataConfigurationFilename_( Filename, Info, false ) )
 			LoadAppData_( Filename, sclrgstry::lLasting );
 	qRR
 	qRT
@@ -436,8 +445,8 @@ namespace {
 	{
 	qRH
 		flf::rOFlow Flow;
-		txf::sOFlow TFlow;
-		xml::wWriter Writer;
+		txf::sWFlow TFlow;
+		xml::rWriter Writer;
 		tol::bDateAndTime Buffer;
 	qRB
 		Flow.Init( Filename );
@@ -462,8 +471,8 @@ namespace {
 	{
 	qRH
 		flf::rOFlow Flow;
-		txf::sOFlow TFlow;
-		xml::wWriter Writer;
+		txf::sWFlow TFlow;
+		xml::rWriter Writer;
 	qRB
 		if ( !GetRegistry().IsEmpty( Level ) ) {
 			if ( !fil::Exists(Filename) || ( fil::GetLastModificationTime(Filename) <= GetRegistry().TimeStamp( Level ) ) )
@@ -476,14 +485,14 @@ namespace {
 	qRE
 	}
 
-	void StoreAppData_( void )
+	void StoreAppData_( const sInfo &Info )
 	{
 	qRH
 		fnm::rName Filename;
 	qRB
 		Filename.Init();
 
-		GetAppDataConfigurationFilename_( Filename, SCLMISCTargetName, SCLMISCProductName, SCLMISCOrganizationName, true );
+		GetAppDataConfigurationFilename_( Filename, Info, true );
 
 		StoreAppData_( Filename, sclrgstry::lLasting );
 	qRR
@@ -492,16 +501,16 @@ namespace {
 	}
 }
 
-void sclmisc::StoreLastingRegistry( void )
+void sclmisc::StoreLastingRegistry( const sInfo &Info )
 {
-	StoreAppData_();
+	StoreAppData_( Info );
 }
 
+#define GET( name )	if ( name == NULL ) name = Get##name##Name()
+
 void sclmisc::DumpLastingRegistryFile(
-	txf::sOFlow &OFlow,
-	const char *Target,
-	const char *Product,
-	const char *Organization )
+	txf::sWFlow &OFlow,
+	const sInfo &Info )
 {
 qRH
 	fnm::rName Name;
@@ -510,7 +519,7 @@ qRH
 qRB
 	Name.Init();
 
-	if ( GetAppDataConfigurationFilename_( Name, Target, Product, Organization, false) ) {
+	if ( GetAppDataConfigurationFilename_( Name, Info, false) ) {
 		IFlow.Init( Name );
 		XIFlow.Init( IFlow, utf::f_Default );
 		xpp::Process( XIFlow, xpp::criterions___( "" ), xml::oIndent, OFlow );
@@ -521,17 +530,14 @@ qRE
 }
 
 
-void sclmisc::DeleteLastingRegistryFile(
-	const char *Target,
-	const char *Product,
-	const char *Organization )
+void sclmisc::DeleteLastingRegistryFile( const sInfo &Info )
 {
 qRH
 	fnm::rName Name;
 qRB
 	Name.Init();
 
-	if ( GetAppDataConfigurationFilename_( Name, Target, Product, Organization, false ) )
+	if ( GetAppDataConfigurationFilename_( Name, Info, false ) )
 		fil::Remove( Name );
 qRR
 qRT
@@ -544,6 +550,7 @@ static void Initialize_(
 	xtf::extended_text_iflow__ &RegistryFlow,
 	const char *RegistryDirectory,
 	const fnm::name___ &BinPath,
+	const sInfo &Info,
 	bso::sBool IgnoreXFiles )
 {
 qRH
@@ -552,10 +559,10 @@ qRH
 qRB
 	if ( !IgnoreXFiles ) {
 		LocaleRootPath.Init();
-		sclrgstry::BuildRootPath( "Locale", SCLMISCTargetName, LocaleRootPath );
+		sclrgstry::BuildRootPath( "Locale", Info.Target(), LocaleRootPath );
 
 		RegistryRootPath.Init();
-		sclrgstry::BuildRootPath( "Configuration", SCLMISCTargetName, RegistryRootPath );
+		sclrgstry::BuildRootPath( "Configuration", Info.Target(), RegistryRootPath );
 
 		scllocale::Load( scllocale::tMain, LocaleFlow, LocaleDirectory );
 
@@ -566,7 +573,7 @@ qRB
 		LoadLocale_( sclrgstry::GetRawLevel( sclrgstry::lMain ), scllocale::tConfiguration );
 	}
 
-	LoadAppData_();
+	LoadAppData_( Info );
 
 	BinPath_.Init();
 	BinPath.UTF8( BinPath_ );
@@ -581,11 +588,12 @@ void sclmisc::Initialize(
 	const char *LocaleDirectory,
 	xtf::extended_text_iflow__ &RegistryFlow,
 	const char *RegistryDirectory,
-	const fnm::name___ &BinPath )
+	const fnm::name___ &BinPath,
+	const sInfo &Info)
 {
 	Initialize_( Rack );
 
-	Initialize_( LocaleFlow, LocaleDirectory, RegistryFlow, RegistryDirectory, BinPath, false );
+	Initialize_( LocaleFlow, LocaleDirectory, RegistryFlow, RegistryDirectory, BinPath, Info, false );
 }
 
 static bso::bool__ GuessFileName_(
@@ -624,6 +632,7 @@ qRE
 bso::bool__ InitializeFlow_(
 	const char *Suffix,
 	const fnm::name___ &SuggestedDirectory,
+	const sInfo &Info,
 	flf::file_iflow___ &Flow,
 	str::string_ &Directory )
 {
@@ -634,7 +643,7 @@ qRH
 	fnm::name___ Location;
 qRB
 	FileName.Init();
-	Success = GuessFileName_( SCLMISCTargetName, Suffix, SuggestedDirectory, FileName );
+	Success = GuessFileName_( Info.Target(), Suffix, SuggestedDirectory, FileName );
 
 	if ( Success )
 		if ( Flow.Init( FileName, err::hUserDefined ) != tol::rSuccess )
@@ -651,6 +660,7 @@ qRE
 namespace {
 	bso::sBool InitializeLocaleFlow_(
 		const fnm::name___ &SuggestedDirectory,
+		const sInfo &Info,
 		flf::file_iflow___ &Flow,
 		str::string_ &Directory,
 		qRPN )
@@ -659,12 +669,14 @@ namespace {
 	qRH
 		lcl::meaning Meaning;
 	qRB
-		Success = InitializeFlow_( LOCALE_DEFAULT_FILENAME_SUFFIX, SuggestedDirectory, Flow, Directory );
+		Success = InitializeFlow_( LOCALE_DEFAULT_FILENAME_SUFFIX, SuggestedDirectory, Info, Flow, Directory );
 
 		if ( !Success && qRPT ) {
 			Meaning.Init();
-			Meaning.SetValue( "" );	// Ne sera pas traduit, puisque la locale n'a pas pu tre lu.
-			Meaning.AddTag( "Unable to open locale file" );	// Ceci remplacera le '%0' ci-dessus.
+			Meaning.SetValue( "" );	// Will not be translated, as the locale file could not be red.
+			// Both tags below will replace the '%0' above.
+			Meaning.AddTag( "Unable to open locale file" );	
+			Meaning.AddTag( Info.Target() );
 			ReportAndAbort( Meaning );
 		}
 	qRR
@@ -675,24 +687,26 @@ namespace {
 
 	bso::sBool InitializeConfigurationFlow_(
 		const fnm::name___ &SuggestedDirectory,
+		const sInfo &Info,
 		flf::file_iflow___ &Flow,
 		str::string_ &Directory,
 		qRPN )
 	{
 		bso::sBool Success = false;
-	qRH
+	qRH;
 		lcl::meaning Meaning;
-	qRB
-		Success = InitializeFlow_( CONFIGURATION_DEFAULT_FILENAME_SUFFIX, SuggestedDirectory, Flow, Directory );
+	qRB;
+		Success = InitializeFlow_( CONFIGURATION_DEFAULT_FILENAME_SUFFIX, SuggestedDirectory, Info, Flow, Directory );
 
 		if ( !Success && qRPT ) {
 			Meaning.Init();
 			Meaning.SetValue( SCLMISC_NAME "_UnableToOpenConfigurationFile" );
+			Meaning.AddTag( Info.Target() );
 			ReportAndAbort( Meaning );
 		}
-	qRR
-	qRT
-	qRE
+	qRR;
+	qRT;
+	qRE;
 		return Success;
 	}
 }
@@ -721,6 +735,7 @@ namespace {
 void sclmisc::Initialize(
 	const sRack &Rack,
 	const fnm::name___ &BinPath,
+	const sInfo &Info,
 	qRPN )
 {
 qRH
@@ -733,27 +748,27 @@ qRB
 	Initialize_( Rack );
 
 	LocaleDirectory.Init();
-	XFilesPresent = InitializeLocaleFlow_( BinPath, LocaleFlow, LocaleDirectory, qRP );
+	XFilesPresent = InitializeLocaleFlow_( BinPath, Info, LocaleFlow, LocaleDirectory, qRP );
 
 	if ( XFilesPresent )
 		LocaleXFlow.Init( LocaleFlow, utf::f_Default );
 
 	ConfigurationDirectory.Init();
-	XFilesPresent = XFilesPresent && InitializeConfigurationFlow_( BinPath, ConfigurationFlow, ConfigurationDirectory, qRP );
+	XFilesPresent = XFilesPresent && InitializeConfigurationFlow_( BinPath, Info, ConfigurationFlow, ConfigurationDirectory, qRP );
 
 	if ( XFilesPresent )
 		ConfigurationXFlow.Init( ConfigurationFlow, utf::f_Default );
 
-	Initialize_( LocaleXFlow, LocaleDirectory.Convert( LocaleBuffer ), ConfigurationXFlow, ConfigurationDirectory.Convert( ConfigurationBuffer ), BinPath, !XFilesPresent );
+	Initialize_( LocaleXFlow, LocaleDirectory.Convert( LocaleBuffer ), ConfigurationXFlow, ConfigurationDirectory.Convert( ConfigurationBuffer ), BinPath, Info, !XFilesPresent );
 qRR
 qRT
 qRE
 }
 
-void sclmisc::Quit( void )
+void sclmisc::Quit( const sInfo &Info )
 {
 	if ( IsInitialized() ) {
-		StoreLastingRegistry();
+		StoreLastingRegistry( Info );
 	}
 }
 
@@ -802,7 +817,7 @@ void sclmisc::EraseProjectRegistry( void )
 
 #define C( name ) case pt##name: return #name; break
 
-const char *sclmisc::GetLabel( project_type__ ProjectType )
+const char *sclmisc::GetLabel( eProjectType ProjectType )
 {
 	switch ( ProjectType ) {
 	C( New );
@@ -825,7 +840,7 @@ static void FillProjectAutomat_( void )
 	stsfsm::Fill( ProjectAutomat_, pt_amount, GetLabel );
 }
 
-project_type__ sclmisc::GetProjectType( const str::string_ &Pattern )
+eProjectType sclmisc::GetProjectType( const str::string_ &Pattern )
 {
 	return stsfsm::GetId( Pattern, ProjectAutomat_, pt_Undefined, pt_amount );
 }
@@ -835,35 +850,41 @@ project_type__ sclmisc::GetProjectType( const str::string_ &Pattern )
 void sclmisc::LoadProject(
 	flw::iflow__ &Flow,
 	const fnm::name___ &Directory,
+	const sInfo &Info,
 	str::string_ &Id )
 {
-	sclrgstry::LoadProject( Flow, SCLMISCTargetName, Directory, Id );
+	sclrgstry::LoadProject( Flow, Info.Target(), Directory, Id );
 
 	LoadLocale_( sclrgstry::GetRawLevel( sclrgstry::lProject ), scllocale::tProject );
 }
 
 void sclmisc::LoadProject(
 	const fnm::name___ &FileName,
+	const sInfo &Info,
 	str::string_ &Id )
 {
-	sclrgstry::LoadProject( FileName, SCLMISCTargetName, Id );
+	sclrgstry::LoadProject( FileName, Info.Target(), Id );
 
 	LoadLocale_( sclrgstry::GetRawLevel( sclrgstry::lProject ), scllocale::tProject );
 }
 
-static void LoadProject_( const str::string_ &FileName )
+static void LoadProject_(
+	const str::string_ &FileName,
+	const sInfo &Info )
 {
 qRH
 	str::string Id;
 qRB
 	Id.Init();
-	LoadProject( FileName, Id );
+	LoadProject( FileName, Info, Id );
 qRR
 qRT
 qRE
 }
 
-static void LoadPredefinedProject_( const str::string_ &Id )
+static void LoadPredefinedProject_(
+	const str::string_ &Id,
+	const sInfo &Info )
 {
 qRH
 	str::string ProjectFileName;
@@ -878,27 +899,28 @@ qRB
 	if ( ProjectFileName.Amount() == 0 )
 		sclmisc::ReportAndAbort( SCLMISC_NAME "_NoOrBadProjectFileNameInPredefinedProject", Id );
 
-	LoadProject_( ProjectFileName );
+	LoadProject_( ProjectFileName, Info );
 qRR
 qRT
 qRE
 }
 
 void sclmisc::LoadProject(
-	project_type__ ProjectType,
-	const str::string_ &ProjectFeature )
+	eProjectType ProjectType,
+	const str::string_ &ProjectFeature,
+	const sInfo &Info )
 {
 	switch ( ProjectType ) {
 	case ptNew:
 		sclrgstry::Erase( sclrgstry::lProject );
 		break;
 	case ptPredefined:
-		LoadPredefinedProject_( ProjectFeature );
+		LoadPredefinedProject_( ProjectFeature, Info );
 		break;
 	case ptRemote:
 		if ( ProjectFeature.Amount() == 0  )
 			sclmisc::ReportAndAbort( SCLMISC_NAME "_NoProjectFileSelected" );
-		LoadProject_( ProjectFeature );
+		LoadProject_( ProjectFeature, Info );
 		break;
 	case ptEmbedded:
 		qRVct();
@@ -913,12 +935,12 @@ void sclmisc::LoadProject(
 }
 
 
-void sclmisc::LoadProject( void )
+void sclmisc::LoadProject( const sInfo &Info )
 {
 qRH
 	str::string Feature;
 	str::string RawType;
-	project_type__ Type = pt_Undefined;
+	eProjectType Type = pt_Undefined;
 qRB
 	Feature.Init();
 	OGetValue( sclrgstry::parameter::project::Feature, Feature );
@@ -932,7 +954,7 @@ qRB
 		if ( Type == pt_Undefined )
 			sclmisc::ReportAndAbort(SCLMISC_NAME "_BadProjectType" );
 
-		LoadProject( Type, Feature );
+		LoadProject( Type, Feature, Info );
 	}
 qRR
 qRT
@@ -990,7 +1012,7 @@ qRE
 
 void sclmisc::Load(
 	const fnm::name___ &FileName,
-	str::string_ &String )
+	str::string_ &Content )
 {
 qRH
 	flf::file_iflow___ Flow;
@@ -998,7 +1020,7 @@ qRB
 	if ( !Flow.Init( FileName, err::hUserDefined ) )
 		ReportFileOpeningErrorAndAbort( FileName );
 
-	String.FillWith( Flow );
+	Content.FillWith( Flow );
 qRR
 qRT
 qRE
@@ -1007,85 +1029,112 @@ qRE
 void sclmisc::LoadAndTranslateTags(
 	const fnm::name___ &FileName,
 	const char *Language,
-	str::string_ &String,
+	str::string_ &Content,
 	char Marker )
 {
-	Load( FileName, String );
+	Load( FileName, Content );
 
-	scllocale::TranslateTags( String, Language, Marker );
+	scllocale::TranslateTags( Content, Language, Marker );
 }
 
-static void Load_(
+static bso::sBool Load_(
 	const rgstry::tentry__ &Entry,
 	const sclrgstry::registry_ &Registry,
-	str::string_ &String,
-	str::string_ &FileName )
+	str::string_ &Content,
+	str::string_ &FileName,
+	sclrgstry::eNeedness Needness )
 {
-	sclrgstry::MGetValue( Registry, Entry, FileName );
-
-	Load( FileName, String );
+	if ( sclrgstry::BGetValue( Registry, Entry, Needness, Content ) ) {
+		Load( FileName, Content );
+		return true;
+	} else
+		return false;
 }
 
-
-
-void sclmisc::Load(
+bso::sBool sclmisc::Load(
 	const rgstry::tentry__ &Entry,
 	const sclrgstry::registry_ &Registry,
-	str::string_ &String )
+	sclrgstry::eNeedness Needness,
+	str::string_ &Content )
 {
+	bso::sBool Result = false;
 qRH
 	str::string FileName;
 qRB
 	FileName.Init();
 
-	Load_( Entry, Registry, String, FileName );
+	Load_( Entry, Registry, Content, FileName, Needness );
 qRR
 qRT
 qRE
+	return Result;
 }
 
-void sclmisc::LoadAndTranslateTags(
+bso::sBool sclmisc::LoadAndTranslateTags(
 	const rgstry::tentry__ &FileName,
 	const sclrgstry::registry_ &Registry,
-	str::string_ &String,
+	str::string_ &Content,
+	sclrgstry::eNeedness Needness,
 	char Marker )
 {
+	bso::sBool Found = false;
 qRH
 	TOL_CBUFFER___ Buffer;
 qRB
-	Load( FileName, Registry, String );
-
-	scllocale::TranslateTags( String, sclrgstry::GetLanguage_( Registry, Buffer ), Marker );
+	if ( Found = Load( FileName, Registry, Needness, Content ) )
+		scllocale::TranslateTags( Content, sclrgstry::GetLanguage( Registry, Buffer ), Marker );
 qRR
 qRT
 qRE
-
+return Found;
 }
 
 void sclmisc::LoadXMLAndTranslateTags(
-	const rgstry::tentry__ &FileNameEntry,
-	const sclrgstry::registry_ &Registry,
-	str::string_ &String,
+	const fnm::rName &Filename,
+	const char *Language,
+	str::string_ &Content,
+	xml::sLevel Level,
 	char Marker )
 {
-qRH
-	str::string FileName, Unprocessed, Untranslated;
+qRH;
+	str::string Unprocessed, Untranslated;
 	fnm::name___ FileNameLocation;
-	TOL_CBUFFER___ Buffer;
-qRB
-	FileName.Init();
+qRB;
 	Unprocessed.Init();
-	Load_( FileNameEntry, Registry, Unprocessed, FileName );
+	Load( Filename, Unprocessed );
 
-	fnm::GetLocation( FileName, FileNameLocation );
+	fnm::GetLocation( Filename, FileNameLocation );
 
 	Untranslated.Init();
-	xpp::Process( Unprocessed, xml::oIndent, Untranslated, xpp::criterions___( FileNameLocation ) );
+	xpp::Process( Unprocessed, xml::oIndent, Untranslated, xpp::criterions___( FileNameLocation, Level ) );
 
-	scllocale::TranslateTags( Untranslated, sclrgstry::GetLanguage_( Registry, Buffer ), String, Marker );
-qRR
-qRT
-qRE
+	scllocale::TranslateTags( Untranslated, Language, Content, Marker );
+qRR;
+qRT;
+qRE;
+}
+
+bso::sBool sclmisc::LoadXMLAndTranslateTags(
+	const rgstry::tentry__ &FilenameEntry,
+	const sclrgstry::registry_ &Registry,
+	str::string_ &Content,
+	sclrgstry::eNeedness Needness,
+	xml::sLevel Level,
+	char Marker )
+{
+	bso::sBool Found = false;
+qRH;
+	str::string Filename;
+	TOL_CBUFFER___ Buffer;
+qRB;
+	Filename.Init();
+
+	if ( Found = sclrgstry::BGetValue( Registry, FilenameEntry, Needness, Filename ) )
+		LoadXMLAndTranslateTags( Filename, sclrgstry::GetLanguage( Registry, Buffer ), Content, Level, Marker );
+qRR;
+qRT;
+qRE;
+	return Found;
 }
 
 const sclrgstry::registry_ &sclmisc::GetRegistry( void )
@@ -1331,7 +1380,7 @@ namespace {
 	qRH
 		flx::E_STRING_OFLOW___ SFlow;
 		txf::text_oflow__ TFlow;
-		xml::writer Writer;
+		xml::rWriter Writer;
 	qRB
 		SFlow.Init( XML );
 		TFlow.Init( SFlow );
@@ -1487,7 +1536,7 @@ qRT
 qRE
 }
 
-fdr::rODriver &sclmisc::rODriverRack::Init( const fnm::name___ &FileName )
+fdr::rWDriver &sclmisc::rODriverRack::Init( const fnm::name___ &FileName )
 {
 	Filename_.Init( FileName );
 
@@ -1512,7 +1561,7 @@ void sclmisc::rODriverRack::HandleError( void )
 }
 
 
-fdr::rIDriver &sclmisc::rIDriverRack::Init( const fnm::name___ &FileName )
+fdr::rRDriver &sclmisc::rIDriverRack::Init( const fnm::name___ &FileName )
 {
 	Filename_.Init( FileName );
 
@@ -1524,6 +1573,28 @@ fdr::rIDriver &sclmisc::rIDriverRack::Init( const fnm::name___ &FileName )
 
 		return Driver_;
 	}
+}
+
+namespace {
+	inline void signal_( int s )
+	{
+		exit( EXIT_SUCCESS );
+	}
+}
+
+void sclmisc::ExitOnSignal( void )
+{
+#ifdef CPE_S_POSIX
+	signal( SIGHUP, signal_ );
+#elif defined( CPE_S_WIN )
+	signal( SIGBREAK, signal_ );
+	_set_abort_behavior( 0, _WRITE_ABORT_MSG );
+#else
+#	error "Undefined target !"
+#endif
+	signal( SIGTERM, signal_ );
+	signal( SIGABRT, signal_ );
+	signal( SIGINT, signal_ );	// Documentations about this signal not very clear, but this handles Ctrl-C.
 }
 
 Q37_GCTOR( sclmisc )
