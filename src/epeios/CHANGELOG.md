@@ -6,6 +6,15 @@
 - [stdz]: modification to comply with current standards;
 - [trvl]: trivial modifications;
 
+## 2018-12-03
+
+- RGSTRY:
+  - [adpt],
+- XML:
+  - it is now possible to specify the delimiter used for the attribute value,
+- XPP:
+   - attribute delimiters are now preserved and no more systematically replaced with `"`,
+
 ## 2018-12-01
 
 - XML:

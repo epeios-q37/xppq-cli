@@ -1,7 +1,7 @@
 # cli.appveyor
 
 environment:
-  version: 20181201
+  version: 20181203
   label: xppq
 
 platform:
