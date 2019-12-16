@@ -1,0 +1,25 @@
+<Test file="test.xml">
+  <xpp:define name="Macro1">
+    <xpp:bloc>
+      <SubMacroBlabla>This is a text in a submacro</SubMacroBlabla>
+      <Tree>
+        <Subtree>This is a subtree in a submacro</Subtree>
+      </Tree>
+    </xpp:bloc>
+  </xpp:define>
+  <xpp:define name="Macro2">
+    <xpp:bloc>
+      <MacroBlabla>This is a macro which below content is from another macro</MacroBlabla>
+      <ContentOtherMacro>
+        <xpp:expand select="Macro1"/>
+      </ContentOtherMacro>
+      <FileBlabla>Below content is from the 'test2.xml' file</FileBlabla>  <AnotherFile>
+        <xpp:expand href="test2.xml"/>
+      </AnotherFile>
+    </xpp:bloc>
+  </xpp:define>
+  <MacroExpansionBlabla>Below content is the result of a macro expansion</MacroExpansionBlabla>
+  <MacroExpansion>
+    <xpp:expand select="Macro2"/>
+  </MacroExpansion>
+</Test>
