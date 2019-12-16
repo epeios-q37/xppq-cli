@@ -1,0 +1,2 @@
+language = "bash"
+run = "[ -f xppq ] || make -j 10;./xppq --version;./xppq --help;echo '----------';./xppq test.xml;echo '----------'"
