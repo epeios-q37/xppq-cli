@@ -545,8 +545,8 @@
   <Translation language="en">Encoding discrepancy</Translation>
  </Translations>
  <Translations text="ProgramDescription">
-  <Translation language="fr">Preprocesseur XML basé sur le framework Epeios.</Translation>
-  <Translation language="en">XML preprocessor based on the Epeios framework.</Translation>
+  <Translation language="fr">Preprocesseur XML.</Translation>
+  <Translation language="en">XML preprocessor.</Translation>
  </Translations>
  <Translations text="ProcessingError">
   <Translation language="fr">Erreur de traitement : %1</Translation>
