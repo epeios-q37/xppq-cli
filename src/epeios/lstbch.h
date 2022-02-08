@@ -17,10 +17,10 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-// LiST BunCH 
+// LiST BunCH
 
-#ifndef LSTBCH__INC
-# define LSTBCH__INC
+#ifndef LSTBCH_INC_
+# define LSTBCH_INC_
 
 # define LSTBCH_NAME		"LSTBCH"
 
@@ -188,7 +188,7 @@ namespace lstbch {
 
 	E_AUTO3( list_bunch )
 
-#ifndef FLS__COMPILATION
+#ifndef FLS_COMPILATION_
 
 	template <typename bunch, typename list> struct rH_
 	: public sHooks
@@ -248,13 +248,13 @@ namespace lstbch {
 		uys::eState Init(
 			const rHF &Filenames,
 			uys::mode__ Mode,
-			uys::behavior__ Behavior,
-			flsq::id__ ID )
+			uys::eBehavior Behavior,
+			flsq::rId Id )
 		{
-			uys::eState State = Bunch_.Init( Filenames.Bunch, Mode, Behavior, ID );
+			uys::eState State = Bunch_.Init(Filenames.Bunch, Mode, Behavior, Id);
 
 			if ( !State.IsError() ) {
-				if ( List_.Init( Filenames.List, Mode, Behavior, ID ) != State )
+				if ( List_.Init(Filenames.List, Mode, Behavior, Id) != State )
 					State = uys::sInconsistent;
 			}
 

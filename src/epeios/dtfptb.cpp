@@ -17,7 +17,7 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#define DTFPTB__COMPILATION
+#define DTFPTB_COMPILATION_
 
 #include "dtfptb.h"
 /*$BEGIN$*/
@@ -160,6 +160,23 @@ bso::u32__ dtfptb::OldGetSize( flw::iflow__ &IFlow )
 	return Size;
 }
 
+bso::u32__ dtfptb::OldGetSize( fdr::rRDriver &Driver )
+{
+	bso::sU32 Value = 0;
+qRH;
+	flw::rDressedRFlow<> Flow;
+qRB;
+	Flow.Init( Driver );
+
+	Value = OldGetSize( Flow );
+
+	Flow.reset(false); // To avoid a 'Dismiss(…)'.
+qRR;
+qRT;
+qRE;
+	return Value;
+}
+
 bso::u32__ dtfptb::OldGetSize( const size_buffer__ &Buffer )
 {
 	bso::u32__ Size = Buffer[0];
@@ -182,31 +199,71 @@ bso::u32__ dtfptb::OldGetSize( const size_buffer__ &Buffer )
 	return Size;
 }
 
-static bso::byte__ *_GetInt(
+static bso::sBool GetInt_(
 	flw::iflow__ &Flow,
 	bso::byte__ *DInt )
 {
 	bso::u8__ Counter = 0;
+	bso::sBool IsError = false;
 
-	while ( ( Counter < BSO_DINT_SIZE_MAX ) && ( ( DInt[Counter] = Flow.Get() ) & 0x80 ) )
+	while ( ( Counter < BSO_DINT_SIZE_MAX ) && ( ( DInt[Counter] = Flow.Get( &IsError ) ) & 0x80 ) && !IsError ) {
 		Counter++;
+	}
 
 	if ( Counter >= BSO_DINT_SIZE_MAX )
 		qRFwk();
 
-	return DInt;
+	return !IsError;
 }
 
-static void _PutInt(
+bso::sBool GetInt_(
+	fdr::rRDriver &Driver,
+	bso::byte__ *DInt )
+{
+	bso::sBool Success = false;
+qRH;
+	flw::rDressedRFlow<> Flow;
+qRB;
+	Flow.Init( Driver );
+
+	Success = GetInt_( Flow, DInt );
+
+	Flow.reset(false);  // To avoid the 'Dismiss(…)'.
+qRR;
+qRT;
+qRE;
+	return Success;
+}
+
+static void PutInt_(
 	const bso::xint__ &XInt,
 	flw::oflow__ &Flow )
 {
 	Flow.Write( XInt.DSizeBuffer(), XInt.BufferSize() );
 }
 
+static void PutInt_(
+	const bso::xint__ &XInt,
+	fdr::rWDriver &Driver )
+{
+qRH;
+	flw::rDressedWFlow<> Flow;
+qRB;
+	Flow.Init( Driver );
+
+	PutInt_(XInt, Flow);
+
+	Flow.DumpCache();
+
+	Flow.reset(false);  // To avoid the 'Commit(…)'.
+qRR;
+qRT;
+qRE;
+}
+
 #define M( s )	Flow.Put( (flw::byte__)( Int >> ( s * 8 ) ) )
 
-void dtfptb::_FPutInt(
+void dtfptb::FPutInt_(
 	bso::int__ Int,
 	_length__ Length,
 	flw::oflow__ &Flow )
@@ -221,11 +278,17 @@ void dtfptb::_FPutInt(
 #else
 		qRFwk();
 #endif
+	// Below comment is taken into account by some compiler, and avoid a 'fall through' warning.
+	// fall through
 	case 4:
 		M( 3 );
 		M( 2 );
+		// Below comment is taken into account by some compiler, and avoid a 'fall through' warning.
+		// fall through
 	case 2:
 		M( 1 );
+		// Below comment is taken into account by some compiler, and avoid a 'fall through' warning.
+		// fall through
 	case 1:
 		M( 0 );
 		break;
@@ -234,13 +297,35 @@ void dtfptb::_FPutInt(
 		break;
 	}
 }
+
 #undef M
 
-#define M( s )	Int += (bso::int__)( Flow.Get() ) << ( s * 8 )
+void dtfptb::FPutInt_(
+    bso::int__ Int,
+	_length__ Length,
+	fdr::rWDriver &Driver )
+{
+qRH;
+	flw::rDressedWFlow<> Flow;
+qRB;
+	Flow.Init( Driver );
 
-bso::int__ dtfptb::_FGetInt(
+	FPutInt_(Int, Length, Flow);
+
+	Flow.DumpCache();
+
+	Flow.reset(false);  // To avoid the 'Commit(…)'.
+qRR;
+qRT;
+qRE;
+}
+
+#define M( s )	Int += (bso::int__)( Flow.Get( IsError ) ) << ( s * 8 )
+
+bso::int__ dtfptb::FGetInt_(
 	flw::iflow__ &Flow,
-	_length__ Length )
+	_length__ Length,
+	bso::sBool *IsError )
 {
 	bso::int__ Int = 0;
 
@@ -254,11 +339,17 @@ bso::int__ dtfptb::_FGetInt(
 #else
 		qRFwk();
 #endif
+		// Below comment is taken into account by some compiler, and avoid a 'fall through' warning.
+		// fall through
 	case 4:
 		M( 3 );
 		M( 2 );
+		// Below comment is taken into account by some compiler, and avoid a 'fall through' warning.
+		// fall through
 	case 2:
 		M( 1 );
+		// Below comment is taken into account by some compiler, and avoid a 'fall through' warning.
+		// fall through
 	case 1:
 		M( 0 );
 		break;
@@ -272,12 +363,43 @@ bso::int__ dtfptb::_FGetInt(
 
 #undef M
 
-bso::sUBig dtfptb::_VGetUBig(
-	flw::iflow__ &Flow,
-	bso::sUBig Max )
+bso::int__ dtfptb::FGetInt_(
+	fdr::rRDriver &Driver,
+	_length__ Length,
+	bso::sBool *IsError )
+{
+	bso::sSInt Int = 0;
+qRH;
+	flw::rDressedRFlow<> Flow;
+qRB;
+	Flow.Init( Driver );
+
+	Int = FGetInt_( Flow, Length, IsError );
+
+	Flow.reset(false);  // To avoid the 'Dismiss()'.
+qRR;
+qRT;
+qRE;
+	return Int;
+}
+
+template <typename fd> static bso::sUHuge TemplatedVGetUHuge_(
+	fd &FD,
+	bso::sUHuge Max,
+	bso::sBool *IsError )
 {
 	bso::byte__ DInt[BSO_DINT_SIZE_MAX];
-	bso::sUBig Value = bso::ConvertToUBig( _GetInt( Flow, DInt ) );
+
+	if ( !GetInt_( FD, DInt ) )	{
+		if ( IsError == NULL )
+			qRFwk();
+		else {
+			*IsError = true;
+			return 0;
+		}
+	}
+
+	bso::sUHuge Value = bso::ConvertToUHuge( DInt );
 
 	if ( Value > Max )
 		qRFwk();
@@ -285,13 +407,40 @@ bso::sUBig dtfptb::_VGetUBig(
 	return Value;
 }
 
-bso::sSBig dtfptb::_VGetSBig(
+bso::sUHuge dtfptb::VGetUHuge_(
 	flw::iflow__ &Flow,
-	bso::sSBig Min,
-	bso::sSBig Max )
+	bso::sUHuge Max,
+	bso::sBool *IsError )
+{
+	return TemplatedVGetUHuge_( Flow, Max, IsError );
+}
+
+bso::sUHuge dtfptb::VGetUHuge_(
+	fdr::rRDriver &Driver,
+	bso::sUHuge Max,
+	bso::sBool *IsError )
+{
+	return TemplatedVGetUHuge_( Driver, Max, IsError );
+}
+
+template <typename fd> bso::sSHuge TemplatedVGetSHuge_(
+	fd &FD,
+	bso::sSHuge Min,
+	bso::sSHuge Max,
+	bso::sBool *IsError )
 {
 	bso::byte__ DInt[BSO_DINT_SIZE_MAX];
-	bso::sSBig Value = bso::ConvertToSBig( _GetInt( Flow, DInt ) );
+
+	if ( !GetInt_( FD, DInt ) ) {
+		if ( IsError == NULL )
+			qRFwk();
+		else {
+			*IsError = true;
+			return 0;
+		}
+	}
+
+	bso::sSHuge Value = bso::ConvertToSHuge( DInt );
 
 	if ( Value < Min )
 		qRFwk();
@@ -302,22 +451,68 @@ bso::sSBig dtfptb::_VGetSBig(
 	return Value;
 }
 
-void dtfptb::_VPutUBig(
-	bso::sUBig UBig,
-	flw::oflow__ &Flow )
+bso::sSHuge dtfptb::VGetSHuge_(
+	flw::iflow__ &Flow,
+	bso::sSHuge Min,
+	bso::sSHuge Max,
+	bso::sBool *IsError )
 {
-	bso::xint__ XInt;
-
-	_PutInt( bso::ConvertToDInt( UBig, XInt ), Flow );
+	return TemplatedVGetSHuge_( Flow, Min, Max, IsError );
 }
 
-void dtfptb::_VPutSBig(
-	bso::sSBig SBig,
-	flw::oflow__ &Flow )
+bso::sSHuge dtfptb::VGetSHuge_(
+	fdr::rRDriver &Driver,
+	bso::sSHuge Min,
+	bso::sSHuge Max,
+	bso::sBool *IsError )
+{
+	return TemplatedVGetSHuge_( Driver, Min, Max, IsError );
+}
+
+template <typename fd> static void VPutUHuge_(
+	bso::sUHuge UHuge,
+	fd &FD )
 {
 	bso::xint__ XInt;
 
-	_PutInt( bso::ConvertToDInt( SBig, XInt ), Flow );
+	PutInt_( bso::ConvertToDInt( UHuge, XInt ), FD );
+}
+
+void dtfptb::VPutUHuge_(
+	bso::sUHuge UHuge,
+	fdr::rWDriver &Driver )
+{
+	::VPutUHuge_( UHuge, Driver );
+}
+
+void dtfptb::VPutUHuge_(
+	bso::sUHuge UHuge,
+	flw::oflow__ &Flow )
+{
+	::VPutUHuge_( UHuge, Flow );
+}
+
+template <typename fd> void VPutSHuge_(
+	bso::sSHuge SHuge,
+	fd &FD )
+{
+	bso::xint__ XInt;
+
+	PutInt_( bso::ConvertToDInt( SHuge, XInt ), FD );
+}
+
+void dtfptb::VPutSHuge_(
+	bso::sSHuge SHuge,
+	fdr::rWDriver &Driver)
+{
+	::VPutSHuge_( SHuge, Driver );
+}
+
+void dtfptb::VPutSHuge_(
+	bso::sSHuge SHuge,
+	flw::oflow__ &Flow )
+{
+	::VPutSHuge_( SHuge, Flow );
 }
 
 Q37_GCTOR( dtfptb )

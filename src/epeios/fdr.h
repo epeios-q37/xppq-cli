@@ -19,8 +19,8 @@
 
 // Flow DRiver
 
-#ifndef FDR__INC
-# define FDR__INC
+#ifndef FDR_INC_
+# define FDR_INC_
 
 # define FDR_NAME		"FDR"
 
@@ -42,6 +42,7 @@
 #	endif
 #endif
 
+namespace fdr {
 #ifdef FDR__TS
 #	include "mtx.h"
 #	define FDR_NO_MUTEX	MTX_INVALID_HANDLER
@@ -50,6 +51,7 @@
 	typedef void *mutex__;
 #	define FDR_NO_MUTEX	NULL
 #endif
+}
 
 #ifdef FDR_DEFAULT_CACHE_SIZE
 #	define FDR__DEFAULT_CACHE_SIZE	FDR_DEFAULT_CACHE_SIZE
@@ -61,34 +63,34 @@
 
 
 // predeclaration
-namespace flw
-{
+namespace flw {
 	class iflow__;
 	class oflow__;
 }
 
 namespace fdr {
-		//t Amount of data.
+	//t Amount of data.
 	using bso::size__;
 
-	enum thread_safety__
-	{
+	enum thread_safety__ {
 		tsEnabled,
 		tsDisabled,
 		ts_amount,
 		ts_Undefined,
 		ts_Default =
 #ifdef FDR__TS
-		tsEnabled
+			tsEnabled
 #else
-		tsDisabled
+			tsDisabled
 #endif
 	};
 
 	enum behavior__ {
-		bNonBlocking,	// Au moins un octet est lu, davantage si cela n'entrne pas de blocage.
-		bBlocking,		// Sauf si 'EOF', le nombre d'octets demand sera lu, mme si blocage.
-		bKeep,			// Sauf si 'EOF', le nombre d'octets demands sera lu, mme si blocage, mais ils restent dans le flux.
+		bNonBlocking,	// At least one byte is red, more if this not block.
+		bBlocking,		// Unless EOF, the wanted amount is red, even if blocks.
+		// Same as above with same name, but the data is kept in the flow and will be available again at next reading.
+		bKeepNonBlocking,
+		bKeepBlocking,
 		b_amount,
 		b_Undefined
 	};
@@ -128,7 +130,6 @@ namespace fdr {
 		return FDR_NO_MUTEX;	// Pour viter un 'warning'.
 	}
 
-
 	inline void Delete_( mutex__ Mutex )
 	{
 #ifdef FDR__TS
@@ -159,7 +160,7 @@ namespace fdr {
 #ifdef FDR__TS
 		if ( Mutex != FDR_NO_MUTEX )
 			mtx::Unlock( Mutex );
-	#endif
+#endif
 	}
 
 	inline bso::bool__ IsLocked_( mutex__ Mutex )
@@ -180,7 +181,7 @@ namespace fdr {
 		mutex__ _Mutex;	// Mutex pour protger la ressource.
 		sTID Owner_;
 	protected:
-		void Lock( void )
+		bso::sBool Lock( bso::sBool Block )
 		{
 #ifdef FDR__TS
 			sTID Caller = tht::GetTID();
@@ -192,13 +193,17 @@ namespace fdr {
 
 					Owner_ = Caller;
 				} else if ( Owner_ != Caller ) {
-					Lock_( _Mutex );
+					if ( Block )
+						Lock_( _Mutex );
+					else
+						return false;
 					Owner_ = Caller;
 				}
 			}
 # else
 			Lock_( _Mutex );
-# endif		
+# endif
+			return true;
 		}
 		void Init( thread_safety__ ThreadSafety )
 		{
@@ -211,13 +216,15 @@ namespace fdr {
 #ifdef FDR__TS
 			sTID Old = Owner_;
 
-//			if ( Old != tht::Undefined ) {
-
+			if ( _Mutex != mtx::Undefined ) {
 				if ( TID == tht::Undefined )
 					TID = tht::GetTID();
 
+				if ( TryToLock( _Mutex ) != ( Owner_ == tht::Undefined ) )
+					qRFwk();
+
 				Owner_ = TID;
-//			}
+			}
 
 			return Old;
 #else
@@ -227,8 +234,10 @@ namespace fdr {
 	public:
 		void reset( bso::bool__ P = true )
 		{
-			if ( P )
-				Delete_( _Mutex );
+			if ( P ) {
+				if ( _Mutex != mtx::Undefined )
+					Delete_( _Mutex );
+			}
 
 			Owner_ = tht::Undefined;
 			_Mutex = NULL;
@@ -238,7 +247,7 @@ namespace fdr {
 		{
 			return IsLocked_( _Mutex );
 		}
-		void Unlock( void )
+		bso::sBool Unlock( qRPN )
 		{
 #ifdef FDR__TS
 			sTID Caller = tht::GetTID();
@@ -248,14 +257,22 @@ namespace fdr {
 					if ( Owner_ != Caller )
 						qRFwk();
 
+					Owner_ = tht::Undefined;
+
 					Unlock_( _Mutex );
 
-					Owner_ = tht::Undefined;
-				}
+					return true;
+				} else if ( Owner_ != tht::Undefined )
+					qRFwk();
+				else if ( ErrHandling == err::hThrowException )
+					qRFwk();
+
+				return false;
 			}
 # else
 			Unlock_( _Mutex );
 # endif
+			return true;
 		}
 		sTID Owner( void ) const
 		{
@@ -308,7 +325,7 @@ namespace fdr {
 				Amount = FDRRead( Wanted, Buffer );
 
 				if ( ( Amount == 0 ) && AutoDismissOnEOF_ && DismissPending_ )
-					Dismiss( true );	// Relaying dismissing to underlying level on EOF.
+					Dismiss( true, err::h_Default );	// Relaying dismissing to underlying level on EOF.
 
 				return Amount;
 			} else
@@ -329,7 +346,7 @@ namespace fdr {
 
 			return Red;
 		}
-		size__ _FillCache( size__ Size )	// Si != 0, alors on fait le maximum pour lire la quantit demande. Sinon, on en lit au moins 1, sauf si 'EOF'.
+		size__ _FillCache( size__ Size )	// If != 0, everything is done to retrieve the wanted quantity. Otherwise, at least one byte is retrieved, unless EOF.
 		{
 #ifdef FDR_DBG
 			if ( _Cache == NULL )
@@ -357,9 +374,9 @@ namespace fdr {
 
 			return _Available;
 		}
-		void _CompleteCache( size__ Size )	// Fait le maximum pour que le cache, avec les donnes dj disponibles, contienne la quantit demande.
+		void _CompleteCache( size__ Size )// If the cache does not already contain 'Size' bytes, missing data will be red.
 		{
-			if ( _Size == 0 )	// Plus de donne disponibles.
+			if ( _Size == 0 )	// No more data available.
 				return;
 
 			if ( _Available < Size ) {
@@ -379,9 +396,9 @@ namespace fdr {
 					_Size = 0;	// Pour signaler 'EOF' atteint.
 			}
 		}
-		size__ _ReadFromCache(
+		size__ ReadFromCache_(
 			size__ Size,
-			byte__ *Buffer,
+			byte__ *Buffer,	// Can be == NULL, if we only want to consume data.
 			bso::bool__ Adjust,
 			size__ *TotalRed )
 		{
@@ -389,7 +406,8 @@ namespace fdr {
 				Size = _Available;
 
 			if ( _Available != 0 )  {
-				memcpy( Buffer, _Cache + _Position, Size );
+				if ( Buffer != NULL  )
+					memcpy( Buffer, _Cache + _Position, Size );
 
 				if ( Adjust ) {
 					_Available -= Size;
@@ -402,13 +420,13 @@ namespace fdr {
 
 			return Size;
 		}
-		size__ _ReadThroughCache(
+		size__ ReadThroughCache_(
 			size__ Size,
-			byte__ *Buffer,
+			byte__ *Buffer,	// Can be == NULL if we want only to consume data.
 			bso::bool__ Force,
 			size__ *TotalRed )	// Si == 'true', on fait le maximum pour lire la quantite demande.
 		{
-			size__ Red = _ReadFromCache( Size, Buffer, true, TotalRed );
+			size__ Red = ReadFromCache_( Size, Buffer, true, TotalRed );
 
 			if ( Red < Size )  {
 				if ( Force )
@@ -418,7 +436,7 @@ namespace fdr {
 				else
 					return Red;
 
-				Red += _ReadFromCache( Size - Red, Buffer + Red, true, TotalRed );
+				Red += ReadFromCache_( Size - Red, Buffer == NULL ? Buffer : Buffer + Red, true, TotalRed );
 			}
 
 			return Red;
@@ -426,7 +444,7 @@ namespace fdr {
 
 		bso::bool__ EOF_( void )
 		{
-			Lock();
+			Lock(true);
 
 			if ( _Available ) {
 				DismissPending_ = true;
@@ -436,23 +454,25 @@ namespace fdr {
 				return false;
 			} else {
 				if ( !DismissPending_ )
-					Unlock();
+					Unlock( err::h_Default);
 				return true;
 			}
 		}
 	protected:
-		// Retourne le nombre d'octets effectivement lus. Ne retourne '0' que si plus aucune donne n'est disponibe.
+		// Returns the amount of data red. If 0, then no more data are available (EOF).
 		virtual size__ FDRRead(
 			size__ Maximum,
 			byte__ *Buffer ) = 0;
-		virtual void FDRDismiss( bso::sBool Unlock ) = 0;
-		virtual sTID FDRITake( sTID Owner ) = 0;
+		virtual bso::sBool FDRDismiss(
+			bso::sBool Unlock,
+			qRPN ) = 0;	// If 'Unlock' at true, returns true if unlocking succeed (i.e. was locked, and by the same thread), if 'ErrHandling' allows it.
+		virtual sTID FDRRTake( sTID Owner ) = 0;
 	public:
-		void reset( bso::bool__ P = true ) 
+		void reset( bso::bool__ P = true )
 		{
 			if ( P ) {
 				_flow_driver_base__::BaseTake( tht::Undefined );	// Prevent some unwanted error due to bad due to mutex owning.
-				Dismiss( true );
+				Dismiss( true, err::hUserDefined);	// Ignore errors.
 			}
 
 			_Cache = NULL;
@@ -487,33 +507,43 @@ namespace fdr {
 		{
 			AutoDismissOnEOF_ = Value;
 		}
-		sTID ITake( sTID Owner )
+		sTID RTake( sTID Owner = tht::Undefined )
 		{
-			return GetTID_( FDRITake( Owner ), BaseTake( Owner ) );
+			return GetTID_( FDRRTake( Owner ), BaseTake( Owner ) );
 		}
-		void Dismiss( bso::sBool Unlock )	// When 'Unlock' is set to false, the 'Red_' value is NOT set to 0.
+		bso::sBool Dismiss(
+			bso::sBool Unlock,	// When 'Unlock' is set to false, the 'Red_' value is NOT set to 0.
+			qRPN )
 		{
-			if ( DismissPending_ ) {
-				if ( _Cache != NULL ) {
-				qRH
-				qRB
-					FDRDismiss( Unlock );
-				qRR
-				qRT
-					if ( Unlock )
-						this->Unlock();
-				qRE
+			bso::sBool Success = true;
+
+			if ( Lock( false ) ) {
+			qRH
+			qRB
+				if ( DismissPending_ ) {
+					if ( _Cache != NULL ) {
+						Success = FDRDismiss( Unlock, ErrHandling );
+
+						DismissPending_ = false;
+					}
 				}
-
-				if ( Unlock )
+			qRR
+			qRT
+				if ( Unlock ) {
 					Red_ = 0;
-
-				DismissPending_ = false;
+					if ( Success )
+						Success = this->Unlock( ErrHandling );
+					else
+						this->Unlock( err::hUserDefined );	// Ignore errors.
+				}
+			qRE
 			}
+
+			return Success;
 		}
 		size__ Read(
 			size__ Wanted,
-			byte__ *Buffer,
+			byte__ *Buffer,	// Can be null if we only want to consume data.
 			behavior__ Behavior )
 		{
 #ifdef FDR_DBG
@@ -525,14 +555,13 @@ namespace fdr {
 
 			switch ( Behavior ) {
 			case bNonBlocking:
-				return _ReadThroughCache( Wanted, Buffer, false, &Red_ );
+				return ReadThroughCache_( Wanted, Buffer, false, &Red_ );
 				break;
 			case bBlocking:
-
 				if ( ( _Available >= Wanted ) || ( _Size > ( Wanted - _Available ) ) )
-					return _ReadThroughCache( Wanted, Buffer, true, &Red_ );
+					return ReadThroughCache_( Wanted, Buffer, true, &Red_ );
 				else {
-					size__ Red = _ReadFromCache( Wanted, Buffer, true, &Red );
+					size__ Red = ReadFromCache_( Wanted, Buffer, true, &Red_ );
 
 					if ( Red < Wanted )
 						Red += _LoopingRead( Wanted - Red, Buffer + Red, &Red_ );
@@ -541,16 +570,20 @@ namespace fdr {
 				}
 
 				break;
-			case bKeep:
+			case bKeepBlocking:
 				_CompleteCache( Wanted );
+				// Below comment is taken into account by some compiler, and avoid a 'fall through' warning.
+				// fall through
+			case bKeepNonBlocking:
+				if ( Buffer == NULL )	// Does not make sense in this case.
+					qRFwk();
 
-				return _ReadFromCache( Wanted, Buffer, false, &Red_ );
+				return ReadFromCache_( Wanted, Buffer, false, NULL );
 				break;
 			default:
 				qRFwk();
 				break;
 			}
-
 
 			return 0;	// Pour viter un 'warning'.
 		}
@@ -572,6 +605,13 @@ namespace fdr {
 		size__ AmountRed( void ) const
 		{
 			return Red_;
+		}
+		void EmptyCache( void )
+		{
+			if ( !IsLocked() )
+				qRFwk();
+
+			_Available = _Position = 0;
 		}
 	};
 
@@ -596,7 +636,6 @@ namespace fdr {
 	: public _flow_driver_base__
 	{
 	private:
-		bso::bool__ _Initialized;	// Pour viter des 'pure virtual function call'.
 		bso::sBool CommitPending_;
 		size__ Written_;	// Amount of data written since last commit.
 	protected:
@@ -605,16 +644,18 @@ namespace fdr {
 			const byte__ *Buffer,
 			size__ Maximum ) = 0;
 		// Returns 'false' when underlying write fails, 'true' otherwise.
-		virtual void FDRCommit( bso::sBool Unlock ) = 0;
-		virtual sTID FDROTake( sTID Owner ) = 0;
+		virtual bso::sBool FDRCommit(
+			bso::sBool Unlock,
+			qRPN ) = 0;	// If 'Unlock' at true, returns true if unlocking succeed (i.e. was locked, and by the same thread), if 'ErrHandling' allows it.
+		virtual sTID FDRWTake( sTID Owner ) = 0;
 	public:
-		void reset( bso::bool__ P = true ) 
+		void reset( bso::bool__ P = true )
 		{
 			if ( P ) {
-				Commit( true );
+				_flow_driver_base__::BaseTake( tht::Undefined );	// Prevent some unwanted error due to bad due to mutex owning.
+				Commit( true, err::hUserDefined);	// Errors are ignored.
 			}
 
-			_Initialized = false;
 			CommitPending_ = false;
 			_flow_driver_base__::reset( P );
 			Written_ = 0;
@@ -624,45 +665,57 @@ namespace fdr {
 		{
 			reset();
 
-			_Initialized = true;
 			CommitPending_ = false;
 			_flow_driver_base__::Init( ThreadSafety );
 		}
-		void Commit( bso::sBool Unlock )	// When 'Unlock' is set to false, the 'Written_' value is NOT set to 0.
+		bso::sBool Commit(
+			bso::sBool Unlock,	// When 'Unlock' is set to false, the 'Written_' value is NOT set to 0.
+			qRPN )
 		{
-			if ( CommitPending_ ) {
-				if ( _Initialized ) {
-				qRH
-				qRB
-					FDRCommit( Unlock );
-				qRR
-				qRT
-					if ( Unlock )
-						this->Unlock();
-				qRE
+			bso::sBool Success = true;
+
+			if ( Lock( false ) ) {
+			qRH
+			qRB
+				if ( CommitPending_ ) {
+					Success = FDRCommit( Unlock, ErrHandling );
+					CommitPending_ = false;
 				}
+			qRR
+			qRT
+				if ( Unlock ) {
+					Written_ = false;
 
-				CommitPending_ = false;
-
-				if ( Unlock )
-					Written_ = 0;
+					if ( Success )
+						Success = this->Unlock( ErrHandling );
+					else
+						this->Unlock( err::hUserDefined );	// Errors are ignored.
+				}
+				qRE
 			}
+
+			return Success;
 		}
 		size__ Write(
 			const byte__ *Buffer,
 			size__ Maximum )
 		{
-			Lock();
+		qRH
+		qRB
+			Lock(true);
 			CommitPending_ = true;
 			Maximum = FDRWrite( Buffer, Maximum );
 
 			Written_ += Maximum;
-
+		qRR
+			CommitPending_ = false;	// To prevent a new faulty write attempt on commit.
+		qRT
+		qRE
 			return Maximum;
 		}
-		sTID OTake( sTID Owner )
+		sTID WTake( sTID Owner = tht::Undefined )
 		{
-			return GetTID_( FDROTake( Owner ), BaseTake( Owner ) );
+			return GetTID_( FDRWTake( Owner ), BaseTake( Owner ) );
 		}
 		bso::bool__ OFlowIsLocked( void )	// Simplifie l'utilisation de 'ioflow_driver_...'
 		{
@@ -682,7 +735,7 @@ namespace fdr {
 	public:
 		void reset( bso::bool__ P = true )
 		{
-			if ( Dummy != 0 )	
+			if ( Dummy != 0 )
 				qRFwk();	// 'Dummy' n'tant pas utilis, rien ne sert de modifier sa valeur.
 
 			oflow_driver_base___::reset( P );
@@ -692,7 +745,7 @@ namespace fdr {
 
 	class ioflow_driver_base___
 	: public iflow_driver_base___,
-	  public oflow_driver_base___
+		public oflow_driver_base___
 	{
 	public:
 		void reset( bso::bool__ P = true )
@@ -715,7 +768,7 @@ namespace fdr {
 	: public ioflow_driver_base___
 	{
 	private:
-		byte__ _InputCache[input_cache_size];
+		byte__ _InputCache[input_cache_size+1];	// '+1' to handle 'Unget()'.
 	public:
 		void Init( thread_safety__ ThreadSafety )
 		{
@@ -731,12 +784,12 @@ namespace fdr {
 namespace fdr {
 # if 1	// Deprecated.
 	typedef fdr::iflow_driver___<> rRFlow;
-	typedef fdr::oflow_driver___<> rWFlow; 
+	typedef fdr::oflow_driver___<> rWFlow;
 	typedef fdr::ioflow_driver___<> rRWFlow;
 # endif
 
 	typedef fdr::iflow_driver_base___ rRDriver;
-	typedef fdr::oflow_driver_base___ rWDriver; 
+	typedef fdr::oflow_driver_base___ rWDriver;
 	typedef fdr::ioflow_driver_base___ rRWDriver;
 
 	typedef fdr::iflow_driver___<> rRDressedDriver;
@@ -775,6 +828,103 @@ namespace fdr {
 
 		Purge_( Driver, Buffer, BufferSize );
 	}
+
+	// Template to copy/paste for a read driver.
+	class rRDriver_
+	: public fdr::rRDressedDriver
+	{
+	protected:
+		virtual fdr::size__ FDRRead(
+			fdr::size__ Maximum,
+			fdr::byte__ *Buffer ) override;
+		virtual bso::sBool FDRDismiss(
+			bso::sBool Unlock,
+			qRPN ) override;
+		virtual fdr::sTID FDRRTake( fdr::sTID Owner ) override
+		{
+			return fdr::UndefinedTID;
+		}
+	public:
+		void reset( bso::sBool P = true )
+		{
+			fdr::rRDressedDriver::reset( P );
+		}
+		qCVDTOR( rRDriver_ );
+		void Init( fdr::eThreadSafety ThreadSafety = fdr::ts_Default )
+		{
+			fdr::rRDressedDriver::Init( ThreadSafety );
+		}
+	};
+
+	extern rRDriver_ RDriver_;
+
+	// Template to copy/paste for a write driver.
+	class rWDriver_
+	: public fdr::rWDressedDriver
+	{
+	protected:
+		virtual fdr::size__ FDRWrite(
+			const fdr::byte__ *Buffer,
+			fdr::size__ Maximum ) override;
+		virtual bso::sBool FDRCommit(
+			bso::sBool Unlock,
+			qRPN ) override;
+		virtual fdr::sTID FDRWTake( fdr::sTID Owner ) override
+		{
+			return fdr::UndefinedTID;
+		}
+	public:
+		void reset( bso::sBool P = true )
+		{
+			fdr::rWDressedDriver::reset( P );
+		}
+		qCVDTOR( rWDriver_ );
+		void Init( fdr::eThreadSafety ThreadSafety = fdr::ts_Default )
+		{
+			fdr::rWDressedDriver::Init( ThreadSafety );
+		}
+	};
+
+	extern rWDriver_  WDriver_;
+
+	// Template to copy/paste for a read/write driver.
+	class rRWDriver_
+	: public fdr::rRWDressedDriver
+	{
+	protected:
+		virtual fdr::size__ FDRRead(
+			fdr::size__ Maximum,
+			fdr::byte__ *Buffer ) override;
+		virtual bso::sBool FDRDismiss(
+			bso::sBool Unlock,
+			qRPN ) override;
+		virtual fdr::sTID FDRRTake( fdr::sTID Owner ) override
+		{
+			return fdr::UndefinedTID;
+		}
+		virtual fdr::size__ FDRWrite(
+			const fdr::byte__ *Buffer,
+			fdr::size__ Maximum ) override;
+		virtual bso::sBool FDRCommit(
+			bso::sBool Unlock,
+			qRPN ) override;
+		virtual fdr::sTID FDRWTake( fdr::sTID Owner ) override
+		{
+			return fdr::UndefinedTID;
+		}
+	public:
+		void reset( bso::sBool P = true )
+		{
+			fdr::rRWDressedDriver::reset( P );
+		}
+		qCVDTOR( rRWDriver_ );
+		void Init( fdr::eThreadSafety ThreadSafety = fdr::ts_Default )
+		{
+			fdr::rRWDressedDriver::Init( ThreadSafety );
+		}
+	};
+
+	extern rRWDriver_ RWDriver;
 }
 
 #endif

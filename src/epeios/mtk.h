@@ -17,8 +17,8 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef MTK__INC
-# define MTK__INC
+#ifndef MTK_INC_
+# define MTK_INC_
 
 # define MTK_NAME		"MTK"
 
@@ -81,38 +81,57 @@ typedef void (* mtk__routine)(void *);
 # endif
 
 namespace mtk {
+    // Called on final error handling, before quitting the thread.
+    // NOT called with 'Raw!launchAndKill' (hence the reminder).
+    extern void (* MTKErrorHandling)(void); // To override by user.
+
 	typedef void (* routine__)(void *);
-	
+
 	/*f Launch a new thread executing 'Routine', with 'UP' as user pointer.
 	Thread is killed when returning from 'Routine'. */
 	void RawLaunchAndKill(
 		routine__ Routine,
-		void *UP );
-		
+		void *UP,
+		bso::sBool Reminder );  // Useless parameter, only as reminder
+                            // that there is no default final error handling
+                            // for thread launched with this function.
+
 	/*f Launch a new thread executing 'Routine', with 'UP' as user pointer.
 	Thread is NOI killed when returning from 'Routine', and reused if available
 	at next call of this function. */
 	void RawLaunchAndKeep(
 		routine__ Routine,
-		void *UP );
+		void *UP,
+		bso::sBool = true);    // To be like 'RawLaunchAndKill(…)'; makes some things easier.
+
+	/* Launch in the same thread, does return only when 'Routine' returns.
+	Useful for testing */
+	inline void RawSyncLaunch(
+		routine__ Routine,
+		void *UP,
+		bso::sBool = true)    // To be like 'RawLaunchAndKill(…)'; makes some things easier.
+	{
+		Routine(UP);
+	}
 
 
 	//f Launch a new thread executing 'Routine', with 'UP' as user pointer.
 	inline void RawLaunch(
 		routine__ Routine,
-		void *UP )
+		void *UP,
+		bso::sBool) // Same as for `RawLaunchAndKill(…)`.
 	{
 #ifdef MTK__KILL
-		RawLaunchAndKill( Routine, UP );
+		RawLaunchAndKill(Routine, UP, true);
 #elif defined( MTK__KEEP )
-		RawLaunchAndKeep( Routine, UP );
+		RawLaunchAndKeep(Routine, UP, true );
 #else
 #	error "None of 'MTK_KEEP' or 'MTK_KILL' are defined."
 #endif
 	}
 
 	/*f Force the program to exit after 'Seconds' second.
-	Usefull to force a server to exit to obtain the profiling file. */
+	Useful to force a server to exit to obtain the profiling file. */
 	void ForceExit( unsigned long Seconds );
 
 	using tht::thread_id__;
@@ -136,7 +155,10 @@ namespace mtk {
 		{
 			B_().Unblock();
 		}
-		friend class gBlocker_;
+		tht::rBlocker &Blocker(void)
+		{
+			return B_();
+		}
 	};
 
 	// 'Blocker' protects data in 'UP' from being deleted before it 'Release()' method will be called.
@@ -162,6 +184,12 @@ namespace mtk {
 #	error "None of 'MTK_KEEP' or 'MTK_KILL' are defined."
 #endif
 	}
+
+	/* Launch in the same thread, does return only when 'Routine' returns.
+	Useful for testing */
+	void SyncLaunch(
+		sXRoutine Routine,
+		void *UP );
 
 	template <typename type> struct sData_
 	{

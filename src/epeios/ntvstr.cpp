@@ -17,7 +17,7 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#define NTVSTR__COMPILATION
+#define NTVSTR_COMPILATION_
 
 #include "ntvstr.h"
 
@@ -26,7 +26,7 @@
 using namespace ntvstr;
 
 #ifdef NTVSTR__MBS
-# define strlen_	strlen 
+# define strlen_	strlen
 # define strchr_	strchr
 # define strrchr_	strrchr
 # define strcat_	strcat
@@ -163,5 +163,7 @@ qRT
 qRE
 	return Flow;
 }
+
+rString ntvstr::Empty = rString();
 
 

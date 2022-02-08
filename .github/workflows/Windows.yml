@@ -1,0 +1,44 @@
+name: Windows
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: ilammy/msvc-dev-cmd@v1
+    - name: WhereAmI
+      run: Get-Location
+    - name: build
+      run: MSBuild xppq.vcxproj -m -p:Configuration=Release
+    - name: version
+      if: ${{ true }}
+      run: Start-Process -NoNewWindow -FilePath ".\xppq.exe" -ArgumentList "--version"
+    - name: help
+      if: ${{ true }}
+      run: Start-Process -NoNewWindow -FilePath ".\xppq.exe" -ArgumentList "--help"
+    - name: test
+      if: ${{ true }}
+      run: Start-Process -NoNewWindow -FilePath ".\xppq.exe" -ArgumentList "test/Windows.xml"
+    - name: packaging
+      run: |
+        cmd /c "mkdir xppq-v20220208-win-x64"
+        cmd /c "copy /v xppq.exe xppq-v20220208-win-x64"
+        cmd /c "copy /v xppq.xcfg xppq-v20220208-win-x64"
+        cmd /c "copy /v xppq.xlcl xppq-v20220208-win-x64"
+    - name: compressing
+      run: cmd /c "7z a xppq-v20220208-win-x64.zip xppq-v20220208-win-x64"
+    - name: release
+      uses: svenstaro/upload-release-action@v2
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: xppq-v20220208-win-x64.zip
+        tag: v20220208
+        overwrite: true

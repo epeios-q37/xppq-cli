@@ -19,8 +19,8 @@
 
 // NaTiVe STRing
 
-#ifndef NTVSTR__INC
-# define NTVSTR__INC
+#ifndef NTVSTR_INC_
+# define NTVSTR_INC_
 
 # define NTVSTR_NAME		"NTVSTR"
 
@@ -245,6 +245,8 @@ namespace ntvstr {
 	typedef string___ rString;
 
 	typedef char__ sChar;
+
+	extern rString Empty;
 }
 
 txf::text_oflow__ &operator <<(

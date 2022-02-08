@@ -19,8 +19,8 @@
 
 // FLoW.
 
-#ifndef FLW__INC
-# define FLW__INC
+#ifndef FLW_INC_
+# define FLW_INC_
 
 # define FLW_NAME		"FLW"
 
@@ -122,9 +122,24 @@ namespace flw {
 			bso::bool__ Adjust,
 			bso::bool__ &CacheIsEmpty );
 # endif
-		void _Dismiss( bso::sBool Unlock )
+		byte__ Get_( bso::sBool *IsError )
 		{
-			_D().Dismiss( Unlock );
+			byte__ C = 0;
+
+			if ( _D().Read( 1, &C, fdr::bBlocking ) != 1 ) {
+				if ( IsError != NULL )
+					*IsError = true;
+				else
+					qRFwk();
+            }
+
+			return C;
+		}
+		bso::sBool _Dismiss(
+			bso::sBool Unlock,
+			qRPN )
+		{
+			return _D().Dismiss( Unlock, ErrHandling );
 		}
 		void Init( fdr::iflow_driver_base___ &Driver )	// To force the use of the 'Dressed' version.
 		{
@@ -135,7 +150,7 @@ namespace flw {
 		{
 			if ( P ) {
 				if ( _Driver != NULL )
-					_Dismiss( true );
+					_Dismiss( true, err::hUserDefined );	// Errors are ignored.
 			}
 
 			_Driver = NULL;
@@ -148,7 +163,7 @@ namespace flw {
 
 			_Driver->SetAutoDismissOnEOF( Value );
 		}
-		fdr::iflow_driver_base___ &IDriver( void ) const
+		fdr::iflow_driver_base___ &RDriver( void ) const
 		{
 			return _D();
 		}
@@ -157,7 +172,7 @@ namespace flw {
 			if ( Owner == tht::Undefined )
 				Owner = tht::GetTID();
 
-			return _D().ITake( Owner );
+			return _D().RTake( Owner );
 		}
 		tht::sTID Owner( void ) const
 		{
@@ -190,7 +205,7 @@ namespace flw {
 			size__ Size,
 			byte__ *Datum )
 		{
-      			return _D().Read( Size, Datum, fdr::bKeep );
+      			return _D().Read( Size, Datum, fdr::bKeepBlocking );
 		}
 		byte__ View( void )
 		{
@@ -201,30 +216,40 @@ namespace flw {
 
 			return C;
 		}
-		byte__ Get( void )
+		// Returns immediately if 'IsError' != NULL and '*IsError' == true.
+		byte__ Get( bso::sBool *IsError = NULL )
 		{
-			byte__ C = 0;
-
-			if ( _D().Read( 1, &C, fdr::bBlocking ) != 1 )
-				qRFwk();
-
-			return C;
+			if ( (IsError == NULL) || !*IsError )
+				return Get_( IsError );
+			else
+				return 0;
+		}
+		//f Skip 'Amount' bytes.
+		void Skip(
+			size__ Amount,
+			bso::sBool *IsError )
+		{
+			while ( Amount-- )
+				Get( IsError );
 		}
 		//f Skip 'Amount' bytes.
 		void Skip( size__ Amount = 1 )
 		{
-			while ( Amount-- )
-				Get();
+			return Skip( Amount, NULL );
 		}
 		//f Return the amount of data red since last 'Reset()'.
 		size__ AmountRed( void ) const
 		{
 			return _D().AmountRed();
 		}
-		void Dismiss( bso::sBool Unlock = true )
+		bso::sBool Dismiss(
+			bso::sBool Unlock = true,
+			qRPD )
 		{
 			if ( _Driver != NULL )
-				_Dismiss( Unlock );
+				return _Dismiss( Unlock, ErrHandling );
+			else
+				return true;
 		}
 		bso::bool__ IsInitialized( void ) const
 		{
@@ -270,7 +295,7 @@ namespace flw {
 	public:
 		void reset( bso::sBool P = true )
 		{
-			if ( Dummy != 0 )	
+			if ( Dummy != 0 )
 				qRFwk();	// 'Dummy' n'tant pas utilis, rien ne sert de modifier sa valeur.
 
 			_standalone_iflow__::reset( P );
@@ -348,18 +373,30 @@ namespace flw {
 			const byte__ *Buffer,
 			size__ Wanted,
 			size__ Minimum );
-		bso::sBool DumpCache_( void )
+		// Returns true if the cache was successful dumped ; in this case,
+		// 'Empty' is set to true if the cache was already empty, otherwise
+		// its value is not changed. Returns false if the content of the cache
+		// could not be written.
+		bso::sBool DumpCache_(
+			bso::sBool *WasEmpty,   // May be obsolete!
+			qRPN )
 		{
 			size__ Stayed = _Size - _Free;
-			
+
 			if ( Stayed != 0 ) {
 				if ( _DirectWrite( _Cache, Stayed, Stayed ) == Stayed ) {
 					_Free = _Size;
 					return true;
-				} else
-					return false;
-			} else
+				} else if ( ErrHandling == err::hThrowException ) {
+					_Free = _Size;	// So the next attempt (probably on destruction) will not throw an error.
+					qRFwk();
+				}
+				return false;
+			} else {
+				if ( WasEmpty != NULL )
+					*WasEmpty = true;
 				return true;
+			}
 		}
 		size__ _WriteIntoCache(
 			const byte__ *Buffer,
@@ -367,11 +404,11 @@ namespace flw {
 		{
 			if ( _Free < Amount )
 				Amount = _Free;
-				
+
 			memcpy( _Cache + _Size - _Free, Buffer, (size_t)Amount );
-			
+
 			_Free -= Amount;
-			
+
 			return Amount;
 		}
 		/* Put up to 'Amount' bytes from 'Buffer' directly or through the cache.
@@ -390,19 +427,24 @@ namespace flw {
 				return _WriteIntoCache( Buffer, Amount );
 		}
 		// Synchronization.
-		bso::sBool _Commit( bso::sBool Unlock )
+		bso::sBool _Commit(
+			bso::sBool Unlock,
+			qRPN )
 		{
-			if ( DumpCache_() ) {
-				_D().Commit( Unlock );
-				return true;
-			} else
-				return false;
+			bso::sBool WasEmpty = false;
 
-			return false;	// To avoid a warning'.
+			if ( DumpCache_( &WasEmpty, ErrHandling ) ) {
+//				if ( !WasEmpty )
+					return _D().Commit( Unlock, ErrHandling );
+/*				else
+					return true;
+*/			}
+
+			return false;
 		}
-		void _Unlock( void )
+		bso::sBool _Unlock( qRPN )
 		{
-			_D().Unlock();
+			return _D().Unlock( ErrHandling );
 		}
 		// Put up to 'Amount' bytes from 'Buffer'. Return number of bytes written.
 		size__ _WriteUpTo(
@@ -412,7 +454,7 @@ namespace flw {
 			size__ AmountWritten = _WriteIntoCache( Buffer, Amount );
 
 			if ( ( AmountWritten == 0 )  && ( Amount != 0 ) ) {
-				DumpCache_();
+				DumpCache_( NULL, err::hThrowException );
 				AmountWritten = _DirectWriteOrIntoCache( Buffer, Amount );
 			}
 
@@ -428,7 +470,7 @@ namespace flw {
 		{
 			if ( P ) {
 				if ( _Size != _Free )
-					Commit();
+					Commit(true, err::hUserDefined);	// Errors are ignored.
 			}
 
 			_Driver = NULL;
@@ -442,7 +484,7 @@ namespace flw {
 			size__ Size )
 		{
 			if ( _Size != _Free )
-				Commit();
+				Commit( true, err::hUserDefined );	// Errors are ignored.
 
 			_Driver = &Driver;
 			_Cache = Cache;
@@ -452,14 +494,14 @@ namespace flw {
 		{
 			if ( Owner == tht::Undefined )
 				Owner = tht::GetTID();
-			
-			return _D().OTake( tht::GetTID() );
+
+			return _D().WTake( tht::GetTID() );
 		}
 		tht::sTID Owner( void ) const
 		{
 			return _D().Owner();
 		}
-		fdr::oflow_driver_base___ &ODriver( void ) const
+		fdr::oflow_driver_base___ &WDriver( void ) const
 		{
 			return _D();
 		}
@@ -496,17 +538,14 @@ namespace flw {
 			bso::sBool Unlock = true,
 			qRPD )
 		{
-			if ( _Driver != NULL ) {
-				if ( _Commit( Unlock ) )
-					return true;
-				else if ( qRPT )
-					qRFwk();
-				else
-					return false;
-			} else
+			if ( _Driver != NULL )
+				return _Commit( Unlock, ErrHandling );
+			else
 				return true;
-
-			return false;	// To avoid a warning.
+		}
+		void DumpCache(void)
+		{
+		    DumpCache_(NULL, err::h_Default);
 		}
 		//f Return the amount of data written since last 'Synchronize()'.
 		size__ AmountWritten( void ) const
@@ -617,7 +656,7 @@ namespace flw {
 		{
 			if ( Owner == tht::Undefined )
 				Owner = tht::GetTID();
-			
+
 			return tol::Same( iflow__::Take( Owner ), oflow__::Take( Owner ) );
 		}
 		tht::sTID Owner( void ) const
@@ -727,18 +766,18 @@ namespace flw {
 		qCDTOR( rDressedFlow );
 	};
 
-	typedef flw::iflow__ sRFlow;
-	template <int Dummy = 0> qTCLONEs( standalone_iflow__<Dummy>, sDressedRFlow );
-	template <typename driver, int Dummy = 0> qTCLONE( flw::rDressedFlow<qCOVER2( flw::sDressedRFlow<Dummy>, driver )>, rDressedRFlow );
+	typedef flw::iflow__ rRFlow;	// '__' -> 'r...' instead of 's... : see comment of 'iflow__'.
+	template <int Dummy = 0> qTCLONEs( standalone_iflow__<Dummy>, rDressedRFlow );
+	template <typename driver, int Dummy = 0> qTCLONE( flw::rDressedFlow<qCOVER2( flw::rDressedRFlow<Dummy>, driver )>, rXDressedRFlow );
 
 
-	typedef flw::oflow__ sWFlow;
-	template <int CacheSize = FLW__OUTPUT_CACHE_SIZE> qTCLONEs( standalone_oflow__<CacheSize>, sDressedWFlow );
-	template <typename driver, int CacheSize = FLW__OUTPUT_CACHE_SIZE> qTCLONE( flw::rDressedFlow<qCOVER2( flw::sDressedWFlow<CacheSize>, driver )>, rDressedWFlow );
+	typedef flw::oflow__ rWFlow;	// '__' -> 'r...' instead of 's... : see comment of 'oflow__'.
+	template <int CacheSize = FLW__OUTPUT_CACHE_SIZE> qTCLONEs( standalone_oflow__<CacheSize>, rDressedWFlow );
+	template <typename driver, int CacheSize = FLW__OUTPUT_CACHE_SIZE> qTCLONE( flw::rDressedFlow<qCOVER2( flw::rDressedWFlow<CacheSize>, driver )>, rXDressedWFlow );
 
-	typedef flw::ioflow__ sRWFlow;
-	template <int OutCacheSize = FLW__OUTPUT_CACHE_SIZE> qTCLONEs( standalone_ioflow__<OutCacheSize>, sDressedRWFlow );
-	template <typename driver, int CacheSize = FLW__OUTPUT_CACHE_SIZE> qTCLONE( flw::rDressedFlow<qCOVER2( flw::sDressedRWFlow<CacheSize>, driver )>, rDressedRWFlow );
+	typedef flw::ioflow__ rRWFlow;	// '__' -> 'r...' instead of 's... : see comment of 'ioflow__'.
+	template <int OutCacheSize = FLW__OUTPUT_CACHE_SIZE> qTCLONEs( standalone_ioflow__<OutCacheSize>, rDressedRWFlow );
+	template <typename driver, int CacheSize = FLW__OUTPUT_CACHE_SIZE> qTCLONE( flw::rDressedFlow<qCOVER2( flw::rDressedRWFlow<CacheSize>, driver )>, rXDressedRWFlow );
 }
 
 #endif

@@ -17,7 +17,7 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#define LCL__COMPILATION
+#define LCL_COMPILATION_
 
 #include "lcl.h"
 
@@ -39,7 +39,7 @@ namespace {
 		while ( !Flow.EndOfFlow() ) {
 			if ( ( C = Flow.Get() ) == '\\' )
 				Normalized.Append('\\' );
-			
+
 			Normalized.Append( C );
 		}
 	qRR
@@ -352,7 +352,7 @@ void lcl::locale_::GetLanguages(
 {
 	sdr::row__ PathErrorRow = qNIL;
 
-	_registry_::GetValues( str::string( "Languages/Language/@label" ), Labels, &PathErrorRow );
+	_registry_::GetValues( str::wString( "Languages/Language/@label" ), Labels, &PathErrorRow );
 
 	_GetCorrespondingLabels( Labels, Wordings );
 
@@ -397,28 +397,27 @@ const str::string_ &lcl::locale_::GetTranslation_(
 	str::string_ &Translation ) const
 {
 qRH
-	str::strings Tags;
+	str::wStrings Tags;
 	str::string Value, Intermediate;
 	TOL_CBUFFER___ Buffer;
 qRB
-	if ( Basic.S_.Value == qNIL )
-		qRReturn;
+	if ( Basic.S_.Value != qNIL ) {
+		Value.Init();
+		Core.Values.Recall( Basic.S_.Value, Value );
 
-	Value.Init();
-	Core.Values.Recall( Basic.S_.Value, Value );
+		Intermediate.Init();
+		if ( Basic.GetToTranslate() )
+			Locale.GetTranslation_( Value, Language, Intermediate );
+		else
+			Intermediate = Value;
 
-	Intermediate.Init();
-	if ( Basic.GetToTranslate() )
-		Locale.GetTranslation_( Value, Language, Intermediate );
-	else
-		Intermediate = Value;
+		Tags.Init();
+		GetTags_( Basic.Tags, Core, Language, Locale, Tags );
 
-	Tags.Init();
-	GetTags_( Basic.Tags, Core, Language, Locale, Tags );
+		tagsbs::SubstituteShortTags( Intermediate, Tags, LCL_TAG_MARKER_C );
 
-	tagsbs::SubstituteShortTags( Intermediate, Tags, LCL_TAG_MARKER_C );
-
-	Translation = Intermediate;
+		Translation = Intermediate;
+	}
 qRR
 qRT
 qRE

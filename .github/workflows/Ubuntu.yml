@@ -1,0 +1,26 @@
+name: Ubuntu
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: make
+      run: make -j
+    - name: version
+      if: ${{ true }}
+      run: ./xppq --version
+    - name: help
+      if: ${{ true }}
+      run: ./xppq --help
+    - name: test
+      if: ${{ true }}
+      run: ./xppq test/POSIX.xml

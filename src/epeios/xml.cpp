@@ -17,7 +17,7 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#define XML__COMPILATION
+#define XML_COMPILATION_
 
 #include "xml.h"
 
@@ -46,7 +46,6 @@ const char *xml::GetLabel( status__ Status )
 	CASE( MissingEqualSign );
 	CASE( BadAttributeValueDelimiter );
 	CASE( UnexpectedCharacter );
-	CASE( EmptyTagName );
 	CASE( MismatchedTag );
 	default:
 		qRFwk();
@@ -157,7 +156,7 @@ static status__ GetComment_(
 			Flow.Get( UTF );
 			Content.Append( (bso::char__ *)UTF.Data, UTF.Size );
 		}
-		
+
 		if ( Flow.EndOfFlow() )
 			return sUnexpectedEOF;
 
@@ -284,7 +283,7 @@ static sdr::size__ GetId_(
 	return Size;
 }
 
-static inline sdr::size__ GetName_( 
+static inline sdr::size__ GetName_(
 	_flow___ &Flow,
 	str::string_ &Name )
 {
@@ -417,11 +416,15 @@ static unsigned char HandleEntity_( _flow___ &Flow )
 				return ENTITY_ERROR_VALUE;
 
 			State = ehsQUO;
+		// Below comment is taken into account by some compiler, and avoid a 'fall through' warning.
+		// fall through
 		case ehsQUO:
 			if ( Flow.Get() != 't' )
 				return ENTITY_ERROR_VALUE;
 
 			State = ehsQUOT;
+		// Below comment is taken into account by some compiler, and avoid a 'fall through' warning.
+		// fall through
 		case ehsQUOT:
 			if ( Flow.Get() != ';' )
 				return ENTITY_ERROR_VALUE;
@@ -480,7 +483,7 @@ inline status__ GetAttributeValue_(
 	char Delimiter,
 	entities_handling__ EntitiesHandling,
 	str::string_ &Value )
-{	
+{
 	bso::bool__ Dummy;
 
 	return GetValue_( Flow, Delimiter, EntitiesHandling, Value, Dummy );
@@ -566,22 +569,23 @@ inline static bso::bool__ IsSpecialAttribute_( const str::string_ &Attribute )
 	if ( ( _Status = ( F ) ) != sOK )\
 	{\
 		_Token = t_Error;\
-		qRReturn;\
+		Error = true;\
+		break;\
 	}
 
 #define RETURN( V )\
 	{\
 		_Status = V;\
 		_Token = t_Error;\
-		qRReturn;\
+		Error = true;\
+		break;\
 	}
 
 token__ xml::parser___::Parse( int TokenToReport )
 {
 qRH
-	bso::bool__ OnlySpaces = false, Continue = true, TEOX = true;	// 'TEOX' : Test EOX.
+	bso::bool__ OnlySpaces = false, Continue = true, TEOX = true, Error = false;	// 'TEOX' : Test EOX.
 qRB
-
 	_Flow.Purge();
 
 	while ( Continue ) {
@@ -645,6 +649,8 @@ qRB
 		case cTagExpected:
 			if ( _Flow.Get() != '<' )
 				RETURN( sUnexpectedCharacter )
+		// Below comment is taken into account by some compiler, and avoid a 'fall through' warning.
+		// fall through
 		case cTagConfirmed:
 			HANDLE( SkipSpaces_( _Flow ) );
 
@@ -682,7 +688,7 @@ qRB
 					GetName_( _Flow, _TagName );
 
 					if ( _TagName.Amount() == 0 )
-						RETURN( sEmptyTagName );
+						RETURN( sUnexpectedCharacter );
 
 					_Tags.Push( _TagName );
 
@@ -725,9 +731,9 @@ qRB
 					if ( ( 1 << _Token ) & TokenToReport )
 						Continue = false;
 
-					_EmptyTag = true;
+					SelfClosing_ = true;
 
-				break;
+					break;
 				case '>':
 					_Flow.Get();
 
@@ -737,7 +743,7 @@ qRB
 
 					_Token = tStartTagClosed;
 
-					_EmptyTag = false;
+					SelfClosing_ = false;
 
 					if ( ( 1 << _Token ) & TokenToReport )
 						Continue = false;
@@ -749,13 +755,13 @@ qRB
 				}
 				break;
 			case tStartTagClosed:
-				if ( _EmptyTag ) {
+				if ( SelfClosing_ ) {
 					_TagName.Init();
 
 					_Tags.Top( _TagName );
 
 					_Token = tEndTag;
-	
+
 					if ( ( 1 << _Token ) & TokenToReport )
 						Continue = false;
 				} else {
@@ -834,9 +840,7 @@ qRB
 						if ( ( 1 << _Token ) & TokenToReport )
 							Continue = false;
 
-						_EmptyTag = true;
-
-
+						SelfClosing_ = true;
 					} else {
 						_Flow.Get();	// Pour la mise  jour des coordonnes.
 						RETURN( sUnexpectedCharacter );
@@ -853,14 +857,14 @@ qRB
 					if ( ( 1 << _Token ) & TokenToReport )
 						Continue = false;
 
-					_EmptyTag = false;
+					SelfClosing_ = false;
 				}/* else {
 					_Flow.Get();	// Pour la mise  jour des coordonnes.
 					RETURN( sUnexpectedCharacter );
 				}
 */				break;
 			case tStartTagClosed:
-				if ( _EmptyTag ) {
+				if ( SelfClosing_ ) {
 					_TagName.Init();
 
 					_Tags.Top( _TagName );
@@ -961,7 +965,7 @@ qRB
 			case t_Undefined:
 				if ( _Flow.View() != '<' ) {
 					_Value.Init();
-					
+
 					HANDLE( GetTagValue_( _Flow, _Value, _EntitiesHandling, OnlySpaces ) );
 
 					if ( !OnlySpaces ) {
@@ -994,23 +998,29 @@ qRB
 			qRFwk();
 			break;
 		}
+
+		if ( Error )
+			break;
 	}
 
-	if ( _Tags.IsEmpty() )
-		if ( _Token == t_Undefined )
-			_Token = t_Processed;
 
-	_Status = sOK;
+	if ( !Error ) {
+		if ( _Tags.IsEmpty() )
+			if ( _Token == t_Undefined )
+				_Token = t_Processed;
+
+		_Status = sOK;
+	}
 qRR
-		if ( ERRType == err::t_Free ) {
-			xtf::error__ Error = xtf::e_NoError;
+	if ( ERRType == err::t_Free ) {
+		xtf::error__ Error = xtf::e_NoError;
 
-			if ( _Flow.Flow().EndOfFlow( Error ) && ( Error != xtf::e_NoError ) ) {
-				_Status = (status__)( s_FirstXTFError + Error );
-				_Token = t_Error;
-				ERRRst();
-			}
+		if ( _Flow.Flow().EndOfFlow( Error ) && ( Error != xtf::e_NoError ) ) {
+			_Status = (status__)( s_FirstXTFError + Error );
+			_Token = t_Error;
+			ERRRst();
 		}
+	}
 qRT
 qRE
 	return _Token;
@@ -1168,13 +1178,15 @@ namespace {
 
 			return Size;
 		}
-		virtual void FDRDismiss( bso::sBool Unlock ) override
+		virtual bso::sBool FDRDismiss(
+			bso::sBool Unlock,
+			qRPN ) override
 		{
-			F_().Dismiss( Unlock );
+			return F_().Dismiss( Unlock, ErrHandling );
 		}
-		virtual fdr::sTID FDRITake( fdr::sTID Owner ) override
+		virtual fdr::sTID FDRRTake( fdr::sTID Owner ) override
 		{
-			return F_().IDriver().ITake( Owner );
+			return F_().RDriver().RTake( Owner );
 		}
 	public:
 		void reset( bso::sBool P = true )
@@ -1224,11 +1236,11 @@ void xml::rWriter::Indent_( bso::size__ Amount ) const
 		F_() << ' ';
 }
 
-void xml::rWriter::PutRawValue( flw::sRFlow &Flow )
+void xml::rWriter::PutRawValue( flw::rRFlow &Flow )
 {
-	if ( TagNameInProgress_ ) {
+	if ( OpeningTagInProgress_ ) {
 		F_() << '>';
-		TagNameInProgress_ = false;
+		OpeningTagInProgress_ = false;
 	}
 
 	flx::Copy( Flow, RF_() );
@@ -1240,7 +1252,7 @@ void xml::rWriter::PutRawValue( flw::sRFlow &Flow )
 
 namespace {
 	void TransformAndPutValue_(
-		flw::sRFlow &Flow,
+		flw::rRFlow &Flow,
 		rWriter &Writer )
 	{
 	qRH
@@ -1257,7 +1269,7 @@ namespace {
 	}
 }
 
-void xml::rWriter::PutValue( flw::sRFlow &Flow )
+void xml::rWriter::PutValue( flw::rRFlow &Flow )
 {
 	switch ( SpecialCharHandling_ ) {
 	case schReplace:
@@ -1291,16 +1303,16 @@ void xml::rWriter::PutValue( const value_ &Value )
 
 void xml::rWriter::PutRawAttribute(
 	const name_ &Name,
-	flw::sRFlow &Flow,
+	flw::rRFlow &Flow,
 	eDelimiter Delimiter )
 {
-	if ( !TagNameInProgress_ )
+	if ( !OpeningTagInProgress_ )
 		qRFwk();
 
 	F_() << ' ' << Name << '=' << GetAttributeDelimiter_( Delimiter );
 
 	flx::Copy( Flow, RF_() );
-		
+
 	F_() << GetAttributeDelimiter_( Delimiter );
 
 	Commit_();
@@ -1309,7 +1321,7 @@ void xml::rWriter::PutRawAttribute(
 namespace {
 	void TransformAndPutAttribute_(
 		const name_ &Name,
-		flw::sRFlow &Flow,
+		flw::rRFlow &Flow,
 		rWriter &Writer,
 		eDelimiter Delimiter )
 	{
@@ -1329,7 +1341,7 @@ namespace {
 
 void xml::rWriter::PutAttribute(
 	const name_ &Name,
-	flw::sRFlow &Flow,
+	flw::rRFlow &Flow,
 	eDelimiter Delimiter )
 {
 	switch ( SpecialCharHandling_ ) {
@@ -1367,17 +1379,17 @@ void xml::rWriter::PutRawAttribute(
 	PutRawAttribute( Name, Flow, Delimiter );
 }
 
-void xml::rWriter::PutCData( flw::sRFlow &Flow )
+void xml::rWriter::PutCData( flw::rRFlow &Flow )
 {
-	if ( TagNameInProgress_ ) {
+	if ( OpeningTagInProgress_ ) {
 		F_() << '>';
-		TagNameInProgress_ = false;
+		OpeningTagInProgress_ = false;
 	}
-	
+
 	F_() << "<![CDATA[";
 
 	flw::Copy( Flow, RF_() );
-		
+
 	F_() << "]]>";
 
 	Commit_();
@@ -1391,7 +1403,9 @@ void xml::rWriter::PutCData( const value_ &Value )
 	PutCData( Flow );
 }
 
-sMark xml::rWriter::PopTag( sMark Mark )
+sMark xml::rWriter::PopTag(
+	bso::sBool NoSelfClosing,
+	sMark Mark)
 {
 qRH
 	name Name;
@@ -1399,19 +1413,22 @@ qRB
 	if ( Tags_.IsEmpty() )
 		qRFwk();
 
-	if ( Mark != Tags_.Last() )
-		if ( Mark != qNIL )
+	if ( Mark != Undefined )
+		if ( Mark != Tags_.Last() )
 			qRFwk();
 
-	if ( TagNameInProgress_ ) {
+	if ( OpeningTagInProgress_ && !NoSelfClosing ) {
 		F_() << "/>";
 		Tags_.Pop();
 	}  else {
 		Name.Init();
 		Tags_.Pop( Name );
-		if ( !TagValueInProgress_ && ( Outfit_ == oIndent ) )
+		if ( OpeningTagInProgress_ ) {
+			OpeningTagInProgress_ = false;	// Otherwise, below 'F_()' could return an unexpected 'txf::WVoid'.
+			F_() << '>';
+		} else if ( !TagValueInProgress_ && ( Outfit_ == oIndent ) )
 			Indent_( Tags_.Amount() );
-		F_() << "</" << Name << ">";
+		F_() << "</" << Name << '>';
 	}
 
 	if ( Outfit_ == oIndent )
@@ -1419,7 +1436,7 @@ qRB
 
 	Commit_();
 
-	TagNameInProgress_ = false;
+	OpeningTagInProgress_ = false;
 	TagValueInProgress_ = false;
 qRR
 qRT
@@ -1432,15 +1449,18 @@ void xml::rWriter::Rewind( sMark Mark )
 	while ( PopTag() != Mark );
 }
 
-bso::sBool xml::rWriter::Put( rParser &Parser )
+// Input data is handled until EOF.
+// If no input data, return false.
+
+eStatus xml::rWriter::Put(rParser &Parser)
 {
-	bso::sBool Continue = true, Success = false;
+	bso::sBool Continue = true;
 
 	while ( Continue ) {
 		switch( Parser.Parse( xml::tfAll & ~xml::tfStartTagClosed ) ) {
 		case xml::tProcessingInstruction:
 			GetFlow() << Parser.DumpData();
-			
+
 			if ( GetOutfit() == xml::oIndent )
 				GetFlow() << txf::nl;
 
@@ -1456,17 +1476,13 @@ bso::sBool xml::rWriter::Put( rParser &Parser )
 			PutValue( Parser.Value() );
 			break;
 		case xml::tEndTag:
-			PopTag();
+			PopTag(!Parser.SelfClosing());
 			break;
 		case xml::tCData:
 			PutCData( Parser.Value() );
 			break;
 		case xml::t_Processed:
-			Continue = false;
-			Success = true;
-			break;
 		case xml::t_Error:
-			Success = false;
 			Continue = false;
 			break;
 		default:
@@ -1475,27 +1491,29 @@ bso::sBool xml::rWriter::Put( rParser &Parser )
 		}
 	}
 
-	return Success;
+	return Parser.Status();
 }
 
-bso::sBool xml::rWriter::Put( xtf::extended_text_iflow__ &XFlow )
+eStatus xml::rWriter::Put(xtf::extended_text_iflow__ &XFlow)
 {
-	bso::sBool Success = true;
+	eStatus Status = s_Undefined;
 qRH
 	rParser Parser;
 qRB
 	Parser.Init( XFlow, ehKeep );
 
-	Success = Put( Parser );
+	Status = Put( Parser );
 qRR
 qRT
 qRE
-	return Success;
+	return Status;
 }
 
-bso::sBool xml::rWriter::Put( const str::dString &XML )
+eStatus xml::rWriter::Put(
+	const str::dString &XML,
+	xtf::sPos &ErrorPosition)
 {
-	bso::sBool Success = false;
+	eStatus Status = s_Undefined;
 qRH
 	flx::sStringIFlow SFlow;
 	xtf::extended_text_iflow__ XFlow;
@@ -1503,11 +1521,12 @@ qRB
 	SFlow.Init( XML );
 	XFlow.Init( SFlow, utf::f_Default );
 
-	Success = Put( XFlow );
+	Status = Put( XFlow );
+	ErrorPosition = XFlow.Position();	// Only of use when 'Status != sOk',
 qRR
 qRT
 qRE
-	return Success;
+	return Status;
 }
 
 Q37_GCTOR( xml )

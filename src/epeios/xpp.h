@@ -17,8 +17,8 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef XPP__INC
-# define XPP__INC
+#ifndef XPP_INC_
+# define XPP_INC_
 
 # define XPP_NAME		"XPP"
 
@@ -187,7 +187,8 @@ namespace xpp {
 		str::string BlocTag;
 		str::string CDataTag;
 		str::string CypherTag;
-		str::string AttributeAttribute;	//'<tag xpp:attribute="..." ...>'//
+		str::string _AttributeAttribute;	//'<tag xpp:attribute="..." ...>'//
+		str::string MarkerAttribute;	//'<tag xpp:marker="..." ...>'//
 		str::string XMLNS;	// <... xmlns:xpp="..." ...> ('xpp' ou ce qui a �t� choisi par l'utilisateur ...).
 		void reset( bso::bool__ P = true )
 		{
@@ -199,7 +200,9 @@ namespace xpp {
 			IfeqTag.reset( P );
 			BlocTag.reset( P );
 			CDataTag.reset( P );
-			AttributeAttribute.reset( P );
+			_AttributeAttribute.reset( P );
+			MarkerAttribute.reset( P );
+			MarkerAttribute.reset( P );
 			XMLNS.reset( P );
 		}
 		_qualified_preprocessor_directives___( void )
@@ -422,8 +425,29 @@ namespace xpp {
 
 	typedef _variables	_variables_;
 
-	typedef bch::E_BUNCH_( bso::char__ ) substitution_markers_;
-	E_AUTO( substitution_markers );
+	// Substitution marker handling.
+	typedef bso::sUInt sMarkerLevel_;
+	const sMarkerLevel_ MarkerLevelMax_ = bso::UIntMax;
+	typedef bso::sChar sMarker_;
+
+	struct sXMarker_ {
+        sMarkerLevel_ Level;
+        sMarker_ Marker;
+        void reset( bso::sBool = true )
+        {
+            Level = 0;
+            Marker = 0;
+        }
+        qCDTOR(sXMarker_);
+        void Init( sMarker_ Marker = 0 )
+        {
+            Level = 0;
+            this->Marker = Marker;
+        }
+	};
+
+	typedef bch::qBUNCHdl( sXMarker_ ) dXMarkers_;
+	qW( XMarkers_ );
 
 	inline bso::sBool GetValue_(
 		const _variables &Variables,
@@ -460,7 +484,9 @@ namespace xpp {
 		bso::bool__ Preserve_;	// If at true, this means that the 'preserve' attribute in 'bloc' tag should be handled, NOT that we have to preserve
 											// the preprocessor directives (that is the goal of below parameter).
 		level__ PreservationLevel_;
-		substitution_markers SubstitutionMarkers_;
+		// Substitution markers.
+		wXMarkers_ XMarkers_;
+		sXMarker_ CurrentXMarker_;
 		bso::bool__ _IgnorePreprocessingInstruction;
 		bso::bool__ _AttributeDefinitionInProgress;
 		bso::uint__ _CDataNesting;
@@ -515,22 +541,41 @@ namespace xpp {
 			const str::string_ &CypherKey,
 			_extended_parser___ *&Parser );
 		status__ _HandleCypherDirective( _extended_parser___ *&Parser );
-		bso::char__ SubstitutionMarker_( void ) const
-		{
-			if ( ( PreservationLevel_ != 0 ) || ( SubstitutionMarkers_.Amount() == 0 ) )
-				return 0;
-			else
-				return SubstitutionMarkers_.Top();
+		void IncMarkerLevel_( void ) {
+            if ( CurrentXMarker_.Level >= MarkerLevelMax_ )
+                qRLmt();
+
+            CurrentXMarker_.Level++;
 		}
-		status__ HandleAtributeValueSubstitution_(
+		void DecMarkerLevel_( void ) {
+            if ( CurrentXMarker_.Level )
+                CurrentXMarker_.Level--;
+            else
+                CurrentXMarker_ = XMarkers_.Pop();
+		}
+		sXMarker_ XMarker_( void ) const
+		{
+			if ( PreservationLevel_ != 0 )
+				return sXMarker_();
+			else
+				return CurrentXMarker_;
+		}
+		sMarker_ Marker_( void ) const
+		{
+            return XMarker_().Marker;
+		}
+		status__ HandleAttributeValueSubstitution_(
 			const str::string_ &Source,
 			bso::char__ Marker,
 			str::string_ &Data );
-		status__ _HandleAttributeDirective(
+		status__ HandleAttributeDirective_(
 			const str::string_ &Parameters,
 			_extended_parser___ *&Parser,
 			str::string_ &Data );
-		status__ _HandlePreprocessorDirective(
+		status__ HandleMarkerDirective_(
+			const str::string_ &RawMarker,
+			_extended_parser___ *&Parser );
+		status__ HandlePreprocessorDirective_(
 			int Directive,
 			_extended_parser___ *&Parser );
 	public:
@@ -549,7 +594,7 @@ namespace xpp {
 			_CypherKey.reset( P );
 			Preserve_ = false;
 			PreservationLevel_ = 0;
-			SubstitutionMarkers_.reset( P );
+			tol::reset( P, XMarkers_, CurrentXMarker_ );
 			_Parser.reset( P );
 			_IgnorePreprocessingInstruction = false;
 			_AttributeDefinitionInProgress = false;
@@ -575,7 +620,7 @@ namespace xpp {
 			const fnm::name___ &Directory,
 			const str::string_ &CypherKey,
 			bso::bool__ Preserve,
-			bso::char__ SubstitutionMarker )
+			bso::char__ SubstitutionMarker)
 		{
 			// _Repository.Init();
 			// _Tags.Init();
@@ -589,8 +634,8 @@ namespace xpp {
 			_CDataNesting = 0;
 			Preserve_= Preserve;
 			PreservationLevel_ = 0;
-			SubstitutionMarkers_.Init();
-			SubstitutionMarkers_.Push( SubstitutionMarker );
+			XMarkers_.Init();
+			CurrentXMarker_.Init(SubstitutionMarker);
 
 			return sOK;
 		}
@@ -655,7 +700,7 @@ namespace xpp {
 			CypherKey,
 			Namespace;
 		bso::bool__ Preserve;
-		bso::char__ SubstitutionTag;
+		bso::char__ SubstitutionMarker;
 		void reset( bso::bool__ P = true )
 		{
 			Directory.reset( P);
@@ -663,38 +708,38 @@ namespace xpp {
 			CypherKey.reset( P );
 			Namespace.reset( P );
 			Preserve = false;
-			SubstitutionTag = 0;
+			SubstitutionMarker = 0;
 		}
 		~criterions___( void )
 		{
 			reset();
 		}
-		criterions___( 
+		criterions___(
 			const fnm::name___ &Directory,
 			xml::sLevel Level = 0,
 			const str::string_ &CypherKey = str::string() ,
 			const str::string_ &Namespace = str::string(),
 			bso::bool__ Preserve = false,
-			bso::char__ SubstitutionTag = 0 )
+			bso::char__ SubstitutionMarker = 0 )
 		{
 			reset( false );
 
-			Init( Directory, Level, CypherKey, Namespace, Preserve, SubstitutionTag );
+			Init( Directory, Level, CypherKey, Namespace, Preserve, SubstitutionMarker );
 		}
-		void Init( 
+		void Init(
 			const fnm::name___ &Directory,
 			xml::sLevel Level = 0,
 			const str::string_ &CypherKey = str::string(),
 			const str::string_ &Namespace = str::string(),
 			bso::bool__ Preserve = false,
-			bso::char__ SubstitutionTag = 0 )
+			bso::char__ SubstitutionMarker = 0)
 		{
 			this->Directory.Init( Directory );
 			this->Level = Level;
 			this->CypherKey.Init( CypherKey );
 			this->Namespace.Init( Namespace );
 			this->Preserve = Preserve;
-			this->SubstitutionTag = SubstitutionTag;
+			this->SubstitutionMarker = SubstitutionMarker;
 		}
 		bso::bool__ IsNamespaceDefined( void ) const
 		{
@@ -706,7 +751,7 @@ namespace xpp {
 	: public _iflow_driver___
 	{
 	private:
-		status__ _Status;
+		status__ Status_;
 		_qualified_preprocessor_directives___ _Directives;
 		_repository _Repository;
 		_variables _Variables;
@@ -735,9 +780,13 @@ namespace xpp {
 		virtual sdr::size__ FDRRead(
 			sdr::size__ Maximum,
 			sdr::byte__ *Buffer ) override;
-		virtual void FDRDismiss( bso::sBool Unlock ) override
-		{}
-		virtual fdr::sTID FDRITake( fdr::sTID Owner ) override
+		virtual bso::sBool FDRDismiss(
+			bso::sBool Unlock,
+			qRPN ) override
+		{
+			return true;
+		}
+		virtual fdr::sTID FDRRTake( fdr::sTID Owner ) override
 		{
 			return _Parser().Flow().UndelyingFlow().Take( Owner );
 		}
@@ -756,7 +805,7 @@ namespace xpp {
 			_iflow_driver___::reset( P );
 			_Parsers.reset( P );
 			_CurrentParser = NULL;
-			_Status = s_Undefined;
+			Status_ = s_Undefined;
 		}
 		_preprocessing_iflow_driver___( void )
 		{
@@ -769,7 +818,7 @@ namespace xpp {
 		void Init(
 			xtf::extended_text_iflow__ &XFlow,
 			fdr::thread_safety__ ThreadSafety,
-			const criterions___ &Criterions )
+			const criterions___ &Criterions)
 		{
 		qRH
 			str::wString Buffer;
@@ -792,9 +841,9 @@ namespace xpp {
 			_iflow_driver___::Init( ThreadSafety );
 			_CurrentParser = NewParser( _Repository, _Variables, _Directives );
 			_Parsers.Init();
-			if ( _Parser().Init( XFlow, str::string(), Criterions.Directory, Criterions.CypherKey, Criterions.Preserve, Criterions.SubstitutionTag ) != sOK )
+			if ( _Parser().Init( XFlow, str::string(), Criterions.Directory, Criterions.CypherKey, Criterions.Preserve, Criterions.SubstitutionMarker ) != sOK )
 				qRFwk();
-			_Status = sOK;
+			Status_ = sOK;
 		qRR
 		qRT
 		qRE
@@ -802,12 +851,12 @@ namespace xpp {
 		}
 		status__ Status( void ) const
 		{
-			return _Status;
+			return Status_;
 		}
 		const context___ &GetContext( context___ &Context ) const
 		{
 			Context.Coordinates = coords___( _Parser().Position(), _Parser().LocalizedFileName() );
-			Context.Status = _Status;
+			Context.Status = Status_;
 
 			return Context;
 		}
@@ -836,9 +885,9 @@ namespace xpp {
 		}
 		void Init(
 			xtf::extended_text_iflow__ &XFlow,
-			const criterions___ &Criterions )
+			const criterions___ &Criterions)
 		{
-			_FlowDriver.Init( XFlow, fdr::tsDisabled, Criterions );
+			_FlowDriver.Init(XFlow, fdr::tsDisabled, Criterions);
 			_iflow__::Init( _FlowDriver );
 		}
 		const context___ &GetContext( context___ &Context ) const
@@ -877,8 +926,8 @@ namespace xpp {
 	status__ Encrypt(
 		const str::string_ &Namespace,
 		flw::iflow__ &IFlow,
-		xml::outfit__ Outfit,
-		utf::format__ Format,
+		const xml::outfit__ Outfit,
+		const utf::format__ Format,
 		txf::text_oflow__ &OFlow,
 		context___ &Context );
 
@@ -886,13 +935,6 @@ namespace xpp {
 		xtf::extended_text_iflow__ &XFlow,
 		const criterions___ &Criterions,
 		xml::rWriter &Writer,
-		context___ &Context );
-
-	status__ Process(
-		xtf::extended_text_iflow__ &XFlow,
-		const criterions___ &Criterions,
-		xml::outfit__ Outfit,
-		txf::text_oflow__ &OFlow,
 		context___ &Context );
 
 	inline status__ Process(
@@ -913,10 +955,17 @@ namespace xpp {
 		return Status;
 	}
 
+	status__ Process(
+		xtf::extended_text_iflow__ &XFlow,
+		const criterions___ &Criterions,
+		const xml::outfit__ Outfit,
+		txf::text_oflow__ &OFlow,
+		context___ &Context );
+
 	inline status__ Process(
 		xtf::extended_text_iflow__ &XFlow,
 		const criterions___ &Criterions,
-		xml::outfit__ Outfit,
+		const xml::outfit__ Outfit,
 		txf::text_oflow__ &OFlow )
 	{
 		status__ Status = s_Undefined;
@@ -932,11 +981,31 @@ namespace xpp {
 		return Status;
 	}
 
-	void Process(
+	status__ Process(
 		const str::string_ &In,
-		xml::outfit__ Outfit,
+		const xml::outfit__ Outfit,
 		str::string_ &Out,
-		const criterions___ &Criterions );
+		const criterions___ &Criterions,
+		context___ &Context);
+
+	inline status__ Process(
+		const str::string_ &In,
+		const xml::outfit__ Outfit,
+		str::string_ &Out,
+		const criterions___ &Criterions)
+		{
+			status__ Status = s_Undefined;
+		qRH;
+			context___ Context;
+		qRB;
+			Context.Init();
+
+			Status = Process(In, Outfit, Out, Criterions, Context);
+		qRR;
+		qRT;
+		qRE;
+			return Status;
+		}
 }
 
 /*************/
@@ -944,8 +1013,9 @@ namespace xpp {
 /*************/
 
 namespace xpp {
-	typedef preprocessing_iflow___ rIFlow;
+	typedef preprocessing_iflow___ rRFlow;
 	typedef criterions___ rCriterions;
+	typedef context___ rContext;
 }
 
 

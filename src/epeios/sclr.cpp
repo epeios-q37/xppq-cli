@@ -17,98 +17,98 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#define SCLRGSTRY__COMPILATION
+#define SCLR_COMPILATION_
 
-#include "sclrgstry.h"
+#include "sclr.h"
 
-#include "cio.h"
-#include "lcl.h"
-#include "dir.h"
-#include "fnm.h"
-#include "tagsbs.h"
+#include "sclm.h"
 
-#include "sclerror.h"
-#include "sclmisc.h"
+using namespace sclr;
 
-using namespace sclrgstry;
-
-E_CDEF( char *, sclrgstry::ParametersTag, "Parameters" );
+E_CDEF( char *, sclr::ParametersTag, "Parameters" );
 
 #define REGISTRY_FILE_EXTENSION ".xcfg"
 
-static rgstry::multi_level_registry Registry_;
+static rgstry::multi_layer_registry Registry_;
 
-static rgstry::level__ MainLevel_ = rgstry::UndefinedLevel;
-static rgstry::level__ LastingLevel_ = rgstry::UndefinedLevel;	// Application data.
-static rgstry::level__ ProjectLevel_ = rgstry::UndefinedLevel;
-static rgstry::level__ SetupLevel_ = rgstry::UndefinedLevel;
-static rgstry::level__ ArgumentsLevel_ = rgstry::UndefinedLevel;
-static rgstry::level__ RuntimeLevel_ = rgstry::UndefinedLevel;	// Temporary registry.
+static rgstry::layer__ MainLayer_ = rgstry::UndefinedLayer;
+static rgstry::layer__ LastingLayer_ = rgstry::UndefinedLayer;	// Application data.
+static rgstry::layer__ ProjectLayer_ = rgstry::UndefinedLayer;
+static rgstry::layer__ SetupLayer_ = rgstry::UndefinedLayer;
+static rgstry::layer__ ArgumentsLayer_ = rgstry::UndefinedLayer;
+static rgstry::layer__ RuntimeLayer_ = rgstry::UndefinedLayer;	// Temporary registry.
 
-rgstry::entry___ sclrgstry::Parameters( ParametersTag );
-rgstry::entry___ sclrgstry::Definitions( "Definitions" );
-rgstry::entry___ sclrgstry::Locale( "Locale" );
-rgstry::entry___ sclrgstry::Arguments( "Arguments" );
-rgstry::entry___ sclrgstry::Debug( "Debug", Parameters );
+rgstry::entry___ sclr::Parameters( ParametersTag );
+rgstry::entry___ sclr::Definitions( "Definitions" );
+rgstry::entry___ sclr::Locale( "Locale" );
+rgstry::entry___ sclr::Arguments( "Arguments" );
+rgstry::entry___ sclr::Debug( "Debug", Parameters );
 
-rgstry::entry___ sclrgstry::parameter::Language( "Language", Parameters );
+rgstry::entry___ sclr::parameter::Language( "Language", Parameters );
 
-# if 0
-	rgstry::entry___ ProjectFeature_( "Project", sclrgstry::Parameters );
-	rgstry::entry___ ProjectType_( "@Type", ProjectFeature_ );
-	rgstry::entry___ ProjectAction_("@Action", ProjectFeature_ );
-	rgstry::entry___ PredefinedProjects_( "PredefinedProjects", sclrgstry::Definitions );
-	rgstry::entry___ DefaultPredefinedProject_( "@Default", PredefinedProjects_ );
-	rgstry::entry___ FreePredefinedProject_( "PredefinedProject", PredefinedProjects_ ); 
-	rgstry::entry___ PredefinedProjectId_( "@id", FreePredefinedProject_ );
-	rgstry::entry___ PredefinedProject_( RGSTRY_TAGGING_ATTRIBUTE( "id" ), FreePredefinedProject_);
-	rgstry::entry___ PredefinedProjectAlias_( "@Alias", PredefinedProject_ );
-# endif
+rgstry::entry___ sclr::parameter::Project("Project", Parameters );
+rgstry::entry___ sclr::parameter::project::Type( "@Type", parameter::Project );
+rgstry::entry___ sclr::parameter::project::Feature( parameter::Project );
 
-rgstry::entry___ sclrgstry::parameter::Project("Project", Parameters );
-rgstry::entry___ sclrgstry::parameter::project::Type( "@Type", parameter::Project );
-rgstry::entry___ sclrgstry::parameter::project::Feature( parameter::Project );
+rgstry::rEntry sclr::parameter::DefaultSetupId("@Setup", sclr::Parameters);
 
 namespace definition_ {
-	rgstry::entry___ Projects_( "Projects", sclrgstry::Definitions );
+	rgstry::entry___ Projects_( "Projects", sclr::Definitions );
 }
 
-rgstry::entry___ sclrgstry::definition::DefaultProjectId( "@Default", definition_::Projects_ );
-rgstry::entry___ sclrgstry::definition::Project( "Project", definition_::Projects_ ); 
-rgstry::entry___ sclrgstry::definition::project::Id( "@id", Project );
-rgstry::entry___ sclrgstry::definition::TaggedProject( RGSTRY_TAGGING_ATTRIBUTE( "id" ), definition::Project );
+rgstry::entry___ sclr::definition::DefaultProjectId( "@Default", definition_::Projects_ );
+rgstry::entry___ sclr::definition::Project( "Project", definition_::Projects_ );
+rgstry::entry___ sclr::definition::project::Id( "@id", Project );
+rgstry::entry___ sclr::definition::TaggedProject( RGSTRY_TAGGING_ATTRIBUTE( "id" ), definition::Project );
 
 
 namespace parameter_ {
-	rgstry::entry___ Plugins_( "Plugins", sclrgstry::Parameters );
+	rgstry::entry___ Plugins_( "Plugins", sclr::Parameters );
 }
 
-rgstry::entry___ sclrgstry::parameter::TargetedPlugin( RGSTRY_TAGGED_ENTRY( "Plugin", "target" ), parameter_::Plugins_ );
-rgstry::entry___ sclrgstry::parameter::targeted_plugin::Id( "@Id", ::parameter::TargetedPlugin );
+rgstry::entry___ sclr::parameter::TargetedPlugin( RGSTRY_TAGGED_ENTRY( "Plugin", "target" ), parameter_::Plugins_ );
+rgstry::entry___ sclr::parameter::targeted_plugin::Id( "@Id", ::parameter::TargetedPlugin );
 
 namespace parameter_ {
 	rgstry::entry___ TargetedPluginsSet_( RGSTRY_TAGGED_ENTRY( "Set", "target" ), parameter_::Plugins_ );
 }
 
-rgstry::entry___ sclrgstry::parameter::LoosePluginItem( "Plugin", parameter_::TargetedPluginsSet_ );
+rgstry::entry___ sclr::parameter::LoosePluginItem( "Plugin", parameter_::TargetedPluginsSet_ );
 
-rgstry::entry___ sclrgstry::parameter::loose_plugin_item::Id( "@Id", parameter::LoosePluginItem );
+rgstry::entry___ sclr::parameter::loose_plugin_item::Id( "@Id", parameter::LoosePluginItem );
 
-rgstry::entry___ sclrgstry::parameter::PluginItem( RGSTRY_TAGGING_ATTRIBUTE( "Id" ), parameter::LoosePluginItem );
+rgstry::entry___ sclr::parameter::PluginItem( RGSTRY_TAGGING_ATTRIBUTE( "Id" ), parameter::LoosePluginItem );
 
-rgstry::entry___ sclrgstry::parameter::debug::DumpRegistries( "DumpRegistries", Debug );
-rgstry::entry___ sclrgstry::parameter::debug::DumpLocales( "DumpLocales", Debug );
+rgstry::entry___ sclr::parameter::debug::DumpRegistries( "DumpRegistries", Debug );
+rgstry::entry___ sclr::parameter::debug::DumpLocales( "DumpLocales", Debug );
 
-namespace definition {
-	static rgstry::entry___ Plugins_( RGSTRY_TAGGED_ENTRY( "Plugins", "target" ), sclrgstry::Definitions );
-	static rgstry::entry___ Plugin_( RGSTRY_TAGGED_ENTRY( "Plugin", "id" ), Plugins_ );
+namespace definition_ {
+	namespace {
+		rgstry::entry___ Plugins_( RGSTRY_TAGGED_ENTRY( "Plugins", "target" ), sclr::Definitions );
+	}
+
+	static rgstry::entry___ Plugin( RGSTRY_TAGGED_ENTRY( "Plugin", "id" ), Plugins_ );
 }
 
-rgstry::entry___ sclrgstry::definition::plugin::Filename( "Filename", ::definition::Plugin_ );
-rgstry::entry___ sclrgstry::definition::plugin::Configuration( "Configuration", ::definition::Plugin_ );
-rgstry::entry___ sclrgstry::definition::plugin::Locale( "Locale", ::definition::Plugin_ );
+rgstry::entry___ sclr::definition::plugin::Filename( "Filename", ::definition_::Plugin );
+rgstry::entry___ sclr::definition::plugin::Configuration( "Configuration", ::definition_::Plugin );
+rgstry::entry___ sclr::definition::plugin::Locale( "Locale", ::definition_::Plugin );
 
-static rgstry::entry___ Setup_( "@Setup", sclrgstry::Parameters );
+namespace setup_ {
+	namespace {
+		rgstry::rEntry
+			Set_("Setups"),
+			Loose_("Setup", Set_);
+	}
+
+	rgstry::rEntry
+		Default("@Default", Set_),
+		Tagged(RGSTRY_TAGGING_ATTRIBUTE("id"), Loose_),
+		Id("@id", Loose_),
+		Alias("@Alias",Tagged);
+}
+
+rgstry::rEntry sclr::setup::Setup(setup_::Tagged);
 
 namespace {
 	tht::rLocker GlobalLocker_;
@@ -143,7 +143,7 @@ namespace {
 	} LastingRegistryLockerCallback_;
 }
 
-registry_ &sclrgstry::GetRWCommonRegistry( void )
+registry_ &sclr::GetRWCommonRegistry( void )
 {
 	if ( !GlobalLocker_.IsLocked() )
 		qRFwk();
@@ -151,7 +151,7 @@ registry_ &sclrgstry::GetRWCommonRegistry( void )
 	return Registry_;
 }
 
-const registry_ &sclrgstry::GetCommonRegistry( void )
+const registry_ &sclr::GetCommonRegistry( void )
 {
 	if ( GlobalLocker_.IsLocked() )
 		qRFwk();
@@ -159,16 +159,16 @@ const registry_ &sclrgstry::GetCommonRegistry( void )
 	return Registry_;
 }
 
-tht::rLocker &sclrgstry::GetCommonRegistryLocker( void )
+tht::rLocker &sclr::GetCommonRegistryLocker( void )
 {
 	return GlobalLocker_;
 }
 
 #define C( name )	case l##name : return #name; break
- 
-const char *sclrgstry::GetLabel( eLevel Level )
+
+const char *sclr::GetLabel( eLayer Layer )
 {
-	switch ( Level ) {
+	switch ( Layer ) {
 	C( Main );
 	C( Lasting );
 	C( Project );
@@ -179,20 +179,20 @@ const char *sclrgstry::GetLabel( eLevel Level )
 		qRFwk();
 		break;
 	}
- 
+
 	return NULL;	// To avoid a warning.
 }
- 
+
 #undef C
 
 #define C( name )\
 case l##name:\
-	return name##Level_;\
+	return name##Layer_;\
 	break
 
-rgstry::level__ sclrgstry::GetRawLevel( eLevel Level )
+rgstry::layer__ sclr::GetRawLayer( eLayer Layer )
 {
-	switch ( Level ) {
+	switch ( Layer ) {
 	C( Main );
 	C( Lasting );
 	C( Project );
@@ -204,71 +204,72 @@ rgstry::level__ sclrgstry::GetRawLevel( eLevel Level )
 		break;
 	}
 
-	return rgstry::UndefinedLevel;	// To avoid a warning.
+	return rgstry::UndefinedLayer;	// To avoid a warning.
 }
 
 #undef C
 
-const char *sclrgstry::GetLanguage(
+const char *sclr::GetLanguage(
 	const registry_ &Registry,
 	TOL_CBUFFER___ &Buffer )
 {
-	sclrgstry::OGetValue( Registry, parameter::Language, Buffer );
+	sclr::OGetValue( Registry, parameter::Language, Buffer );
 
 	if ( Buffer == NULL )
-		return sclmisc::GetBaseLanguage();
+		return sclm::GetBaseLanguage();
 	else
 		return Buffer;
 }
 
 #if 0
 static bso::sBool FillRegistry_(
-	eLevel Level,
+	eLayer Layer,
 	xtf::extended_text_iflow__ &Flow,
 	const fnm::name___&Directory,
 	const char *RootPath,
 	rgstry::context___ &Context )
 {
-	return Registry_.Fill( Level, Flow, xpp::criterions___( Directory ), RootPath, Context );
+	return Registry_.Fill( Layer, Flow, xpp::criterions___( Directory ), RootPath, Context );
 }
 #endif
 
-void sclrgstry::ReportBadOrNoValueForEntryErrorAndAbort( const rgstry::tentry__ &Entry )
+void sclr::ReportBadOrNoValueForEntryErrorAndAbort( const rgstry::tentry__ &Entry )
 {
 qRH
 	str::string Path;
 qRB
 	Path.Init();
-	sclmisc::ReportAndAbort( SCLRGSTRY_NAME "_BadOrNoValueForEntry", Entry.GetPath( Path ) );
+	sclm::ReportAndAbort( SCLR_NAME "_BadOrNoValueForEntry", Entry.GetPath( Path ) );
 qRR
 qRT
 qRE
 }
 
-void sclrgstry::Erase( eLevel Level )
+void sclr::Erase( eLayer Layer )
 {
-	Registry_.Erase( GetRawLevel( Level ) );
+	Registry_.Erase( GetRawLayer( Layer ) );
 }
 
-void sclrgstry::Reset( eLevel Level )
+void sclr::Reset( eLayer Layer )
 {
-	Registry_.Erase( GetRawLevel( Level ) );
+	Registry_.Erase( GetRawLayer( Layer ) );
 
-	Registry_.Set( GetRawLevel( Level ) );
+	Registry_.Set( GetRawLayer( Layer ) );
 }
 
-void sclrgstry::Reset(
-	eLevel Level,
+void sclr::Reset(
+	eLayer Layer,
 	const rgstry::entry__ &Entry )
 {
-	Registry_.Erase( GetRawLevel( Level ) );
+	Registry_.Erase( GetRawLayer( Layer ) );
 
-	Registry_.Set( GetRawLevel( Level ), Entry );
+	Registry_.Set( GetRawLayer( Layer ), Entry );
 }
 
 namespace {
-	void ReportParsingErrorAndAbort_(
+	void ReportErrorAndAbort_(
 		const str::dString &Source,
+		const bso::sChar *Label,
 		const rgstry::context___ &Context )
 	{
 	qRH
@@ -276,7 +277,7 @@ namespace {
 		lcl::meaning MeaningBuffer;
 	qRB
 		Meaning.Init();
-		Meaning.SetValue( SCLRGSTRY_NAME "_ParsingError" );
+		Meaning.SetValue( Label );
 
 		Meaning.AddTag( Source );
 
@@ -285,37 +286,44 @@ namespace {
 
 		Meaning.AddTag( MeaningBuffer );
 
-		sclmisc::ReportAndAbort( Meaning );
+		sclm::ReportAndAbort( Meaning );
 	qRR
 	qRT
 	qRE
 	}
 
-	void ReportParsingErrorAndAbort_(
-		xtf::extended_text_iflow__ &,
-		eLevel Level,
+	void ReportErrorAndAbort_(
+		const str::dString &Source,
 		const rgstry::context___ &Context )
 	{
-		ReportParsingErrorAndAbort_( str::wString( GetLabel( Level ) ), Context );
+		ReportErrorAndAbort_( Source, ( Context.Status == rgstry::sUnableToOpenFile ? SCLR_NAME "_UnableToOpenFile" : SCLR_NAME "_ParsingError" ), Context );
 	}
 
-	void ReportParsingErrorAndAbort_(
+	void ReportErrorAndAbort_(
+		xtf::extended_text_iflow__ &,
+		eLayer Layer,
+		const rgstry::context___ &Context )
+	{
+		ReportErrorAndAbort_( str::wString( GetLabel( Layer ) ), Context );
+	}
+
+	void ReportErrorAndAbort_(
 		const fnm::rName &Filename,
-		eLevel,
+		eLayer,
 		const rgstry::context___ &Context )
 	{
 	qRH
 		str::wString Buffer;
 	qRB
 		Buffer.Init();
-		ReportParsingErrorAndAbort_( Filename.UTF8( Buffer ), Context );
+		ReportErrorAndAbort_( Filename.UTF8( Buffer ), Context );
 	qRR
 	qRE
 	qRT
 	}
 
 	template <typename source> static void Load_(
-		eLevel Level,
+		eLayer Layer,
 		source &Source,
 		const char *RootPath,
 		const fnm::name___ &Directory )
@@ -323,29 +331,29 @@ namespace {
 	qRH
 		rgstry::context___ Context;
 	qRB
-		Erase( Level );
+		Erase( Layer );
 
 		Context.Init();
-		if ( !Registry_.Fill( Level, Source, xpp::criterions___( Directory ), RootPath, Context ) )
-			ReportParsingErrorAndAbort_( Source, Level, Context );
+		if ( !Registry_.Fill( Layer, Source, xpp::criterions___( Directory ), RootPath, Context ) )
+			ReportErrorAndAbort_( Source, Layer, Context );
 	qRR
 	qRT
 	qRE
 	}
 }
 
-void sclrgstry::Load(
-	eLevel Level,
+void sclr::Load(
+	eLayer Layer,
 	xtf::extended_text_iflow__ &Flow,
 	const fnm::name___ &Directory,
 	const char *RootPath )
 {
-	Load_(Level, Flow, RootPath, Directory );
+	Load_(Layer, Flow, RootPath, Directory );
 }
 
-void sclrgstry::Load(
-	eLevel Level,
-	flw::sRFlow &Flow,
+void sclr::Load(
+	eLayer Layer,
+	flw::rRFlow &Flow,
 	const fnm::name___ &Directory,
 	const char *RootPath )
 {
@@ -354,7 +362,7 @@ qRH
 qRB
 	XFlow.Init( Flow, utf::f_Default );
 
-	Load_(Level, XFlow, RootPath, Directory );
+	Load_(Layer, XFlow, RootPath, Directory );
 qRR
 qRT
 qRE
@@ -377,14 +385,14 @@ namespace {
 
 		Load_( lProject, Source, Path.Convert( Buffer ), Dir );
 
-		Registry_.GetValue( ProjectLevel_, rgstry::entry___( "@Id" ), Id );
+		Registry_.GetValue( ProjectLayer_, rgstry::entry___( "@Id" ), Id );
 	qRR
 	qRT
 	qRE
 	}
 }
 
-void sclrgstry::LoadProject(
+void sclr::LoadProject(
 	flw::iflow__ &Flow,
 	const char *Target,
 	const fnm::name___ &Directory,
@@ -401,7 +409,7 @@ qRT
 qRE
 }
 
-void sclrgstry::LoadProject(
+void sclr::LoadProject(
 	const fnm::name___ &Filename,
 	const char *Target,
 	str::string_ &Id )
@@ -417,32 +425,26 @@ qRH
 	flx::E_STRING_OFLOW___ OFlow;
 	txf::text_oflow__ TFlow;
 	rgstry::row__ Row = qNIL;
-	rgstry::level__ Level = rgstry::UndefinedLevel;
-	str::string SetupPath;
+	rgstry::layer__ Layer = rgstry::UndefinedLayer;
 qRB
-	if ( SetupId.Amount() == 0  )
-		qRReturn;
+	if ( SetupId.Amount() != 0  ) {
+		OFlow.Init( Content );
+		TFlow.Init( OFlow );
 
-	SetupPath.Init( "Setups/Setup[id=\"" );
-	SetupPath.Append( SetupId );
-	SetupPath.Append( "\"]" );
+		Row = Registry_.Search(rgstry::rTEntry(setup_::Tagged, SetupId), Layer);
 
-	OFlow.Init( Content );
-	TFlow.Init( OFlow );
-
-	Row = Registry_.Search( SetupPath, Level );
-
-	if ( Row != qNIL )
-		Registry_.Dump( Level, Row, false, xml::oCompact, xml::e_None, TFlow );
+		if ( Row != qNIL )
+			Registry_.Dump( Layer, Row, false, xml::oCompact, xml::e_None, TFlow );
+	}
 qRR
 qRT
 qRE
 	return Content;
 }
 
-void sclrgstry::FillWithSetupOfId(
+void sclr::FillWithSetupOfId(
 	registry_ &Registry,
-	rgstry::level__ Level,
+	rgstry::layer__ Layer,
 	const str::string_ &Id )
 {
 qRH
@@ -457,50 +459,92 @@ qRB
 	Setup.Init();
 
 	Setup.Append("<_><" );
-	sclrgstry::Parameters.GetPath( Setup );
+	sclr::Parameters.GetPath( Setup );
 	Setup.Append('>' );
 
 	GetSelectedSetupContent_( Id, Setup );
 
 	Setup.Append( "</" );
-	sclrgstry::Parameters.GetPath( Setup );
+	sclr::Parameters.GetPath( Setup );
 	Setup.Append( "></_>" );
 
-	Registry.Erase( Level );
+	Registry.Erase( Layer );
 
 	IFlow.Init( Setup );
 	XFlow.Init( IFlow, utf::f_Default );
-	Registry.Fill( Level, XFlow, xpp::criterions___( fnm::name___() ), NULL );
+	Registry.Fill( Layer, XFlow, xpp::criterions___( fnm::name___() ), NULL );
 qRR
 qRT
 qRE
 }
 
-void sclrgstry::FillWithGivenSetup(
+bso::sBool sclr::GetDefaultSetupId(
+	const dRegistry &Registry,
+	str::dString &Id)
+{
+	return OGetValue(Registry, parameter::DefaultSetupId, Id) || OGetValue(Registry, setup_::Default, Id);
+}
+
+void sclr::FillWithGivenSetup(
 	registry_ &Registry,
-	rgstry::level__ Level )
+	rgstry::layer__ Layer )
 {
 qRH
 	str::string Id;
 qRB
 	Id.Init();
 
-	if ( OGetValue( Registry_, Setup_, Id ) )
-		FillWithSetupOfId( Registry, Level, Id );
+	if ( GetDefaultSetupId(Registry, Id) )
+		FillWithSetupOfId( Registry, Layer, Id );
 qRR
 qRT
 qRE
 }
 
-void sclrgstry::ReportIfNoSetupId( void )
+void sclr::GetSetupIds(
+	const dRegistry &Registry,
+	str::dStrings &Ids)
 {
-	if ( !Registry_.Exists( Setup_  ) )
-		ReportBadOrNoValueForEntryErrorAndAbort( Setup_ );
+		GetValues(Registry, setup_::Id, Ids);
 }
 
-void sclrgstry::FillWithContent(
+void sclr::GetSetupAliases(
+	const dRegistry &Registry,
+	const str::dStrings &Ids,
+	str::dStrings &Aliases)
+{
+qRH;
+	str::wStrings Ids;
+	sdr::sRow Row = qNIL;
+	str::wString Alias;
+qRB;
+	Ids.Init();
+
+	GetSetupIds(Registry, Ids);
+
+	Row = Ids.First();
+
+	while ( Row != qNIL ) {
+		Alias.Init();
+		OGetValue(Registry, rgstry::rTEntry(setup_::Alias, Ids(Row)), Alias);
+		Aliases.Append(Alias);
+
+		Row = Ids.Next(Row);
+	}
+qRR;
+qRT;
+qRE;
+}
+
+void sclr::ReportIfNoParametersSetupId( void )
+{
+	if ( !Registry_.Exists(parameter::DefaultSetupId) )
+		ReportBadOrNoValueForEntryErrorAndAbort(parameter::DefaultSetupId);
+}
+
+void sclr::FillWithContent(
 	registry_ &Registry,
-	rgstry::level__ Level,
+	rgstry::layer__ Layer,
 	const str::dString &BinPath,
 	const str::string_ &RawContent )
 {
@@ -516,38 +560,17 @@ qRB
 	Content.Append( RawContent );
 	Content.Append( "</_>" );
 
-	Registry.Erase( Level );
+	Registry.Erase( Layer );
 
 	IFlow.Init( Content );
 	XFlow.Init( IFlow, utf::f_Default );
-	Registry.Fill( Level, XFlow, xpp::criterions___( BinPath ), NULL );
+	Registry.Fill( Layer, XFlow, xpp::criterions___( BinPath ), NULL );
 qRR
 qRT
 qRE
 }
 
-bso::bool__ sclrgstry::BGetValue(
-	const registry_ &Registry,
-	const rgstry::tentry__ &Entry,
-	eNeedness Needness,
-	str::string_ &Value )
-{
-	bso::sBool Return = false;
-
-	switch ( Needness ) {
-	case nMandatory:
-		MGetValue( Registry, Entry, Value );
-		Return = true;
-		break;
-	case nOptional:
-		Return =  OGetValue( Registry, Entry, Value );
-		break;
-	}
-
-	return Return;
-}
-
-void sclrgstry::AddValue(
+void sclr::AddValue(
 	registry_ &Registry,
 	const str::string_ &Value,
 	const rgstry::tentry__ &Entry )
@@ -555,7 +578,7 @@ void sclrgstry::AddValue(
 	Registry.AddValue( Entry, Value );
 }
 
-void sclrgstry::AddValue(
+void sclr::AddValue(
 	registry_ &Registry,
 	const str::string_ &Path,
 	const str::string_ &Value,
@@ -564,7 +587,7 @@ void sclrgstry::AddValue(
 	Registry.AddValue( Path, Value, Error );
 }
 
-void sclrgstry::SetValue(
+void sclr::SetValue(
 	registry_ &Registry,
 	const str::string_ &Value,
 	const rgstry::tentry__ &Entry )
@@ -572,7 +595,7 @@ void sclrgstry::SetValue(
 	Registry.SetValue( Entry, Value );
 }
 
-void sclrgstry::SetValue(
+void sclr::SetValue(
 	registry_ &Registry,
 	const str::string_ &Path,
 	const str::string_ &Value,
@@ -581,15 +604,15 @@ void sclrgstry::SetValue(
 	Registry.SetValue( Path, Value, Error );
 }
 
-bso::bool__ sclrgstry::GetValues(
+bso::bool__ sclr::GetValues(
 	const registry_ &Registry,
 	const rgstry::tentry__ &Entry,
-	str::strings_ &Values )
+	str::dStrings &Values )
 {
 	return Registry.GetValues( Entry, Values );
 }
 
-bso:: bool__ sclrgstry::OGetValue(
+bso:: bool__ sclr::OGetValue(
 	const registry_ &Registry,
 	const rgstry::tentry__ &Entry,
 	str::string_ &Value )
@@ -597,7 +620,7 @@ bso:: bool__ sclrgstry::OGetValue(
 	return Registry.GetValue( Entry, Value );
 }
 
-const char *sclrgstry::OGetValue(
+const char *sclr::OGetValue(
 	const registry_ &Registry,
 	const rgstry::tentry__ &Entry,
 	TOL_CBUFFER___ &Buffer )
@@ -616,18 +639,18 @@ qRE
 	return ReturnedValue;
 }
 
-const str::string_ &sclrgstry::MGetValue(
+const str::string_ &sclr::MGetValue(
 	const registry_ &Registry,
 	const rgstry::tentry__ &Entry,
 	str::string_ &Value )
 {
-	if ( !BGetValue( Registry, Entry, Value ) )
-		sclrgstry::ReportBadOrNoValueForEntryErrorAndAbort( Entry );
+	if ( !BGetValue( Registry, Entry, Value, qRPU ) )
+		sclr::ReportBadOrNoValueForEntryErrorAndAbort( Entry );
 
 	return Value;
 }
 
-const char *sclrgstry::MGetValue(
+const char *sclr::MGetValue(
 	const registry_ &Registry,
 	const rgstry::tentry__ &Entry,
 	TOL_CBUFFER___ &Buffer )
@@ -646,6 +669,31 @@ qRE
 	return Buffer;
 }
 
+bso::sBool sclr::OGetChar(
+  const registry_ &Registry,
+  const rgstry::tentry__ &Entry,
+  bso::sChar &Char)
+{
+  bso::sBool Found = false;
+qRH;
+  str::wString Value;
+qRB;
+  Value.Init();
+
+  // '( (…) ) ' to avoid warning.
+  if ( ( Found = OGetValue(Registry, Entry, Value) ) ) {
+    if ( Value.Amount() != 1 )
+      ReportBadOrNoValueForEntryErrorAndAbort(Entry);
+    else
+      Char = Value(Value.First());
+  }
+
+qRR;
+qRT;
+qRE;
+  return Found;
+}
+
 static tol::extended_boolean__ GetBoolean_( const str::string_ &Value )
 {
 	tol::xbool__ Boolean = tol::xb_Undefined;
@@ -653,7 +701,7 @@ qRH
 	str::string Buffer;
 qRB
 	Buffer.Init( Value );
-	Buffer.StripCharacter(' ');
+	Buffer.StripChars(' ');
 	str::ToLower( Buffer );
 
 	if ( ( Buffer == "true" ) || ( Buffer == "yes" ) || ( Buffer == "1" ) )
@@ -666,18 +714,20 @@ qRE
 	return Boolean;
 }
 
-bso::bool__ sclrgstry::BGetBoolean(
+bso::bool__ sclr::BGetBoolean(
 	const registry_ &Registry,
 	const rgstry::tentry__ &Entry,
-	bso::bool__ DefaultValue )
+	bso::sBool &Result,
+	bso::bool__ DefaultValue,
+	qRPN )
 {
-	bso::bool__ &Result = DefaultValue;
+	bso::sBool Return = false;
 qRH
 	str::string Value;
 qRB
 	Value.Init();
 
-	if ( BGetValue( Registry, Entry, Value ) ) {
+	if ( ( Return = BGetValue( Registry, Entry, Value, qRP ) ) ) {
 		switch ( GetBoolean_( Value ) ) {
 		case tol::xbFalse:
 			Result = false;
@@ -686,7 +736,8 @@ qRB
 			Result = true;
 			break;
 		case tol::xb_Undefined:
-			sclrgstry::ReportBadOrNoValueForEntryErrorAndAbort( Entry );
+			// We don't care about the 'qRP' parameter, because the entry have to be corrected!
+			sclr::ReportBadOrNoValueForEntryErrorAndAbort( Entry );
 			break;
 		default:
 			qRFwk();
@@ -696,10 +747,10 @@ qRB
 qRR
 qRT
 qRE
-	return Result;
+	return Return;
 }
 
-bso::bool__ sclrgstry::MGetBoolean(
+bso::bool__ sclr::MGetBoolean(
 	const registry_ &Registry,
 	const rgstry::tentry___ &Entry )
 {
@@ -717,7 +768,7 @@ qRB
 		Result = true;
 		break;
 	case tol::xb_Undefined:
-		sclrgstry::ReportBadOrNoValueForEntryErrorAndAbort( Entry );
+		sclr::ReportBadOrNoValueForEntryErrorAndAbort( Entry );
 		break;
 	default:
 		qRFwk();
@@ -734,7 +785,8 @@ template <typename t> static bso::bool__ GetUnsignedNumber_(
 	const registry_ &Registry,
 	const rgstry::tentry__ &Entry,
 	t Limit,
-	t &Value )
+	t &Value,
+	qRPN )
 {
 	bso::bool__ Present = false;
 qRH
@@ -743,13 +795,12 @@ qRH
 qRB
 	RawValue.Init();
 
-	if ( !( Present = BGetValue( Registry, Entry, RawValue ) ) )
-		qRReturn;
+	if ( ( Present = BGetValue(Registry, Entry, RawValue, qRP) ) ) {
+		RawValue.ToNumber( Value, Limit, &Error );
 
-	RawValue.ToNumber( Value, Limit, &Error );
-
-	if ( Error != qNIL )
-		sclrgstry::ReportBadOrNoValueForEntryErrorAndAbort( Entry );
+		if ( Error != qNIL )
+			sclr::ReportBadOrNoValueForEntryErrorAndAbort( Entry );
+	}
 qRR
 qRT
 qRE
@@ -761,7 +812,8 @@ template <typename t> static bso::bool__ GetSignedNumber_(
 	const rgstry::tentry__ &Entry,
 	t LowerLimit,
 	t UpperLimit,
-	t &Value )
+	t &Value,
+	qRPN )
 {
 	bso::bool__ Present = false;
 qRH
@@ -770,13 +822,12 @@ qRH
 qRB
 	RawValue.Init();
 
-	if ( !( Present = BGetValue( Registry, Entry, RawValue ) ) )
-		qRReturn;
+	if ( ( Present = BGetValue(Registry, Entry, RawValue, qRP) ) ) {
+		RawValue.ToNumber( Value, UpperLimit, LowerLimit, &Error );
 
-	RawValue.ToNumber( Value, UpperLimit, LowerLimit, &Error );
-
-	if ( Error != qNIL )
-		sclrgstry::ReportBadOrNoValueForEntryErrorAndAbort( Entry );
+		if ( Error != qNIL )
+			sclr::ReportBadOrNoValueForEntryErrorAndAbort( Entry );
+	}
 qRR
 qRT
 qRE
@@ -784,19 +835,19 @@ qRE
 }
 
 #define UN( name, type )\
-type sclrgstry::MGet##name(\
+type sclr::MGet##name(\
 	const registry_ &Registry,\
 	const rgstry::tentry__ &Entry,\
 	type Limit  )\
 {\
 	type Value;\
 	\
-	if ( !GetUnsignedNumber_( Registry, Entry, Limit, Value ) )\
-		sclrgstry::ReportBadOrNoValueForEntryErrorAndAbort( Entry );\
+	if ( !GetUnsignedNumber_(Registry, Entry, Limit, Value, qRPU) )\
+		sclr::ReportBadOrNoValueForEntryErrorAndAbort( Entry );\
 	\
 	return Value;\
 }\
-type sclrgstry::OGet##name(\
+type sclr::OGet##name(\
 	const registry_ &Registry,\
 	const rgstry::tentry__ &Entry,\
 	type DefaultValue,\
@@ -804,7 +855,7 @@ type sclrgstry::OGet##name(\
 {\
 	type Value;\
 	\
-	if ( !GetUnsignedNumber_( Registry, Entry, Limit, Value ) )\
+	if ( !GetUnsignedNumber_(Registry, Entry, Limit, Value, qRPU) )\
 		Value = DefaultValue;\
 	\
 	return Value;\
@@ -820,7 +871,7 @@ UN( U16, bso::u16__ )
 UN( U8, bso::u8__ )
 
 #define SN( name, type )\
-type sclrgstry::MGet##name(\
+type sclr::MGet##name(\
 	const registry_ &Registry,\
 	const rgstry::tentry__ &Entry,\
 	type Min,\
@@ -828,12 +879,12 @@ type sclrgstry::MGet##name(\
 {\
 	type Value;\
 	\
-	if ( !GetSignedNumber_( Registry, Entry, Min, Max, Value ) )\
-		sclrgstry::ReportBadOrNoValueForEntryErrorAndAbort( Entry );\
+	if ( !GetSignedNumber_( Registry, Entry, Min, Max, Value, qRPU ) )\
+		sclr::ReportBadOrNoValueForEntryErrorAndAbort( Entry );\
 	\
 	return Value;\
 }\
-type sclrgstry::OGet##name(\
+type sclr::OGet##name(\
 	const registry_ &Registry,\
 	const rgstry::tentry__ &Entry,\
 	type DefaultValue,\
@@ -842,7 +893,7 @@ type sclrgstry::OGet##name(\
 {\
 	type Value;\
 	\
-	if ( !GetSignedNumber_( Registry, Entry, Min, Max, Value ) )\
+	if ( !GetSignedNumber_( Registry, Entry, Min, Max, Value, qRPU ) )\
 		Value = DefaultValue;\
 	\
 	return Value;\
@@ -856,7 +907,7 @@ SN( S32, bso::s32__ )
 SN( S16, bso::s16__ )
 SN( S8, bso::s8__ )
 
-Q37_GCTOR( sclrgstry )
+Q37_GCTOR( sclr )
 {
 	Registry_.Init();
 	GlobalLocker_.Init();
@@ -864,10 +915,10 @@ Q37_GCTOR( sclrgstry )
 	LastingRegistryLockerCallback_.Init();
 
 	// 3 firsts not as 'embedded', due to the fact that plugins use the registry of the main program.
-	MainLevel_ = Registry_.Create();
-	LastingLevel_ = Registry_.CreateEmbedded( LastingRegistryLockerCallback_ );
-	ProjectLevel_ = Registry_.Create();
-	SetupLevel_ = Registry_.Create();
-	ArgumentsLevel_ = Registry_.CreateEmbedded();
-	RuntimeLevel_ = Registry_.CreateEmbedded();
+	MainLayer_ = Registry_.Create();
+	LastingLayer_ = Registry_.CreateEmbedded( LastingRegistryLockerCallback_ );
+	ProjectLayer_ = Registry_.Create();
+	SetupLayer_ = Registry_.Create();
+	ArgumentsLayer_ = Registry_.CreateEmbedded();
+	RuntimeLayer_ = Registry_.CreateEmbedded();
 }

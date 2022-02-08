@@ -19,8 +19,8 @@
 
 //	$Id: crptgr.h,v 1.13 2013/04/19 19:28:00 csimon Exp $
 
-#ifndef CRPTGR__INC
-#define CRPTGR__INC
+#ifndef CRPTGR_INC_
+#define CRPTGR_INC_
 
 #define CRPTGR_NAME		"CRPTGR"
 
@@ -41,7 +41,7 @@
 /* End of automatic documentation generation part. */
 
 /* Addendum to the automatic documentation generation part. */
-//D CRyPToGRaphy 
+//D CRyPToGRaphy
 /* End addendum to automatic documentation generation part. */
 
 /*$BEGIN$*/
@@ -54,7 +54,7 @@
 namespace crptgr {
 
 	typedef fdr::oflow_driver___<>	_oflow_driver___;
-	
+
 	class encrypt_oflow_driver___
 	: public _oflow_driver___
 	{
@@ -82,13 +82,15 @@ namespace crptgr {
 
 			return Amount;
 		}
-		virtual void FDRCommit(  bso::sBool Unlock  ) override
+		virtual bso::sBool FDRCommit(
+			bso::sBool Unlock,
+			qRPN ) override
 		{
-			_Flow->Commit( Unlock );
+			return _Flow->Commit( Unlock, ErrHandling );
 		}
-		virtual fdr::sTID FDROTake( fdr::sTID Owner ) override
+		virtual fdr::sTID FDRWTake( fdr::sTID Owner ) override
 		{
-			 return _Flow->ODriver().OTake( Owner );
+			 return _Flow->WDriver().WTake( Owner );
 		}
 	public:
 		void reset( bso::bool__ P = true )
@@ -161,7 +163,7 @@ namespace crptgr {
 		str::string_ &Crypted );
 
 	typedef fdr::iflow_driver___<>	_iflow_driver___;
-	
+
 	class decrypt_iflow_driver___
 	: public _iflow_driver___
 	{
@@ -193,13 +195,15 @@ namespace crptgr {
 
 			return Maximum;
 		}
-		virtual void FDRDismiss(  bso::sBool Unlock  ) override
+		virtual bso::sBool FDRDismiss(
+			bso::sBool Unlock,
+			qRPN ) override
 		{
-			_Flow->Dismiss( Unlock );
+			return _Flow->Dismiss( Unlock, ErrHandling );
 		}
-		virtual fdr::sTID FDRITake( fdr::sTID Owner ) override
+		virtual fdr::sTID FDRRTake( fdr::sTID Owner ) override
 		{
-			return _Flow->IDriver().ITake( Owner );
+			return _Flow->RDriver().RTake( Owner );
 		}
 	public:
 		void reset( bso::bool__ P = true )

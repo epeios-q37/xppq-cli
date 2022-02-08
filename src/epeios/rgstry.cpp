@@ -17,7 +17,7 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#define RGSTRY__COMPILATION
+#define RGSTRY_COMPILATION_
 
 #include "rgstry.h"
 
@@ -78,6 +78,8 @@ qRB
 	case sRootPathError:
 		if ( Context.PathErrorRow != qNIL )
 			qRFwk();
+		// Below comment is taken into account by some compiler, and avoid a 'fall through' warning.
+		// fall through
 	case sUnableToFindRootPath:
 		Meaning.SetValue( GetLabel( Context.Status ) );
 		break;
@@ -99,7 +101,7 @@ row__ rgstry::registry_::_Search(
 	bNode Buffer;
 
 	Buffer.Init( Nodes );
-	
+
 	if ( Row == qNIL )
 		Row = NodeRows.First();
 	else
@@ -125,7 +127,7 @@ row__ rgstry::registry_::_Search(
 	bNode Buffer;
 
 	Buffer.Init( Nodes );
-	
+
 	Row = _Search( Name, NodeRows, Cursor );
 
 	while ( ( Row != qNIL ) && ( Buffer( Row ).Nature() != Nature ) )
@@ -438,7 +440,7 @@ qRE
 
 row__ rgstry::registry_::Create(
 	const path_ &Path,
-	row__ Row, 
+	row__ Row,
 	bso::bool__ Reuse )
 {
 	bso::bool__ Continue = true;
@@ -615,7 +617,7 @@ qRB
 
 	if ( RootToo )
 		_DumpNode( Root, Writer );
-	
+
 	Row = Children.First();
 
 	while ( Row != qNIL ) {
@@ -709,13 +711,12 @@ qRH
 qRB
 	Path.Init();
 
-	if ( *Missing )
-		qRReturn;
-
-	if ( BuildPath_( PathString, Path, PathErrorRow ) )
-		GetValue( Path, Row, Value, Missing );
-	else
-		*Missing = true;
+	if ( !*Missing ) {
+		if ( BuildPath_( PathString, Path, PathErrorRow ) )
+			GetValue( Path, Row, Value, Missing );
+		else
+			*Missing = true;
+	}
 qRR
 qRT
 qRE
@@ -868,7 +869,7 @@ namespace {
 		xtf::extended_text_iflow__ PXFlow;
 		xml::status__ Status = xml::s_Undefined;
 	qRB
-		PFlow.Init( XFlow, xpp::criterions___( Criterions.Directory, 0, Criterions.CypherKey, Criterions.IsNamespaceDefined() ? Criterions.Namespace : str::string( DEFAULT_NAMESPACE ) ) );	// NOTA: 'Level' member is not used.
+		PFlow.Init(XFlow, xpp::criterions___(Criterions.Directory, 0, Criterions.CypherKey, Criterions.IsNamespaceDefined() ? Criterions.Namespace : str::string(DEFAULT_NAMESPACE)));	// NOTA: 'Layer' member is not used.
 		PXFlow.Init( PFlow, XFlow.Format() );
 
 		switch ( Status = xml::Parse( PXFlow, xml::ehReplace, Callback, qRPU ) ) {
@@ -1052,26 +1053,24 @@ const value_ &rgstry::overloaded_registry___::GetValue(
 qRH
 	path Path;
 qRB
-	if ( *Missing )
-		qRReturn;
+	if ( !*Missing ) {
 
-	Path.Init();
+		Path.Init();
 
-	if ( !BuildPath_( PathString, Path, PathErrorRow ) ) {
-		*Missing = true;
-		qRReturn;
-	}
+		if ( BuildPath_( PathString, Path, PathErrorRow ) ) {
+			if ( Local.Registry != NULL )
+				Local.Registry->GetValue( Path, Local.Root, Value, Missing );
+			else
+				*Missing = true;
 
-	if ( Local.Registry != NULL )
-		Local.Registry->GetValue( Path, Local.Root, Value, Missing );
-	else
-		*Missing = true;
+			if ( *Missing ) {
+				*Missing = false;
 
-	if ( *Missing ) {
-		*Missing = false;
-
-		if ( Global.Registry != NULL )
-			Global.Registry->GetValue( Path, Global.Root, Value, Missing );
+				if ( Global.Registry != NULL )
+					Global.Registry->GetValue( Path, Global.Root, Value, Missing );
+			}
+		} else
+			*Missing = true;
 	}
 qRR
 qRT
@@ -1090,13 +1089,12 @@ qRH
 qRB
 	Path.Init();
 
-	if ( !BuildPath_( PathString, Path, PathErrorRow ) )
-		qRReturn;
+	if ( BuildPath_( PathString, Path, PathErrorRow ) ) {
+		if ( Local.Registry != NULL )
+			Exists = Local.Registry->GetValues( Path, Local.Root, Values );
 
-	if ( Local.Registry != NULL )
-		Exists = Local.Registry->GetValues( Path, Local.Root, Values );
-
-	Exists = Global.Registry->GetValues( Path, Global.Root, Values ) || Exists;
+		Exists = Global.Registry->GetValues( Path, Global.Root, Values ) || Exists;
+	}
 qRR
 qRT
 qRE
@@ -1116,7 +1114,7 @@ qRB
 	if ( BuildPath_( PathString, Path, PathErrorRow ) )
 		if ( Local.Registry != NULL )
 			Exists = Local.Registry->Exists( Path, Local.Root );
-	
+
 	Exists = Exists || Global.Registry->Exists( Path, Global.Root );
 qRR
 qRT
@@ -1165,35 +1163,33 @@ qRT
 qRE
 }
 
-const value_ &rgstry::multi_level_registry_::GetValue(
+const value_ &rgstry::multi_layer_registry_::GetValue(
 	const str::string_ &PathString,
 	value_ &Value,
 	bso::bool__ *Missing,
 	sdr::row__ *PathErrorRow ) const	// Nota : ne met 'Missing'  'true' que lorque 'Path' n'existe pas. Si 'Missing' est  'true', aucune action n'est ralise.
 {
 qRH
-	level__ Level = qNIL;
+	layer__ Layer = qNIL;
 	path Path;
 qRB
-	if ( *Missing )
-		qRReturn;
+	if ( !*Missing ) {
+		Path.Init();
 
-	Path.Init();
+		if ( BuildPath_( PathString, Path, PathErrorRow ) ) {
+			Layer = Entries.Last();
 
-	if ( !BuildPath_( PathString, Path, PathErrorRow ) )
-		qRReturn;
+			while ( Layer != qNIL ) {
+				*Missing = false;
 
-	Level = Entries.Last();
+				GetValue( Layer, Path, Value, Missing );
 
-	while ( Level != qNIL ) {
-		*Missing = false;
-
-		GetValue( Level, Path, Value, Missing );
-
-		if ( *Missing  )
-			Level = Entries.Previous( Level );
-		else
-			Level = qNIL;
+				if ( *Missing )
+					Layer = Entries.Previous( Layer );
+				else
+					Layer = qNIL;
+			}
+		}
 	}
 qRR
 qRT
@@ -1201,27 +1197,26 @@ qRE
 	return Value;
 }
 
-bso::bool__ rgstry::multi_level_registry_::GetValue(
+bso::bool__ rgstry::multi_layer_registry_::GetValue(
 	const str::string_ &PathString,
 	value_ &Value,
 	sdr::row__ *PathErrorRow ) const
 {
 	bso::bool__ Found = false;
 qRH
-	level__ Level = qNIL;
+	layer__ Layer = qNIL;
 	path Path;
 qRB
 	Path.Init();
 
-	if ( !BuildPath_( PathString, Path, PathErrorRow ) )
-		qRReturn;
+	if ( BuildPath_( PathString, Path, PathErrorRow ) ) {
+		Layer = Entries.Last();
 
-	Level = Entries.Last();
+		while ( ( Layer != qNIL ) && ( !Found ) ) {
+			Found = GetValue( Layer, Path, Value );
 
-	while ( ( Level != qNIL ) && ( !Found ) ) {
-		Found = GetValue( Level, Path, Value );
-
-		Level = Entries.Previous( Level );
+			Layer = Entries.Previous( Layer );
+		}
 	}
 qRR
 qRT
@@ -1229,7 +1224,7 @@ qRE
 	return Found;
 }
 
-bso::bool__ rgstry::multi_level_registry_::GetValue(
+bso::bool__ rgstry::multi_layer_registry_::GetValue(
 	const tentry__ &Entry,
 	str::string_ &Value ) const
 {
@@ -1250,8 +1245,8 @@ qRE
 	return Found;
 }
 
-bso::bool__ rgstry::multi_level_registry_::GetValue(
-	level__ Level,
+bso::bool__ rgstry::multi_layer_registry_::GetValue(
+	layer__ Layer,
 	const tentry__ &Entry,
 	str::string_ &Value ) const
 {
@@ -1262,7 +1257,7 @@ qRH
 qRB
 	Path.Init();
 
-	Found = GetValue( Level, Entry.GetPath( Path ), Value, &PathErrorRow );
+	Found = GetValue( Layer, Entry.GetPath( Path ), Value, &PathErrorRow );
 
 	if ( PathErrorRow != qNIL )
 		qRFwk();
@@ -1273,7 +1268,7 @@ qRE
 }
 
 #if 0
-bso::bool__ rgstry::multi_level_registry_::GetValue(
+bso::bool__ rgstry::multi_layer_registry_::GetValue(
 	const entry___ &Entry,
 	const tags_ &Tags,
 	str::string_ &Value,
@@ -1294,7 +1289,7 @@ qRE
 	return Found;
 }
 
-bso::bool__ rgstry::multi_level_registry_::GetValue(
+bso::bool__ rgstry::multi_layer_registry_::GetValue(
 	const entry___ &Entry,
 	str::string_ &Value,
 	sdr::row__ *PathErrorRow ) const
@@ -1313,27 +1308,26 @@ qRE
 }
 #endif
 
-bso::bool__ rgstry::multi_level_registry_::GetValues(
+bso::bool__ rgstry::multi_layer_registry_::GetValues(
 	const str::string_ &PathString,
 	values_ &Values,
 	sdr::row__ *PathErrorRow ) const
 {
 	bso::bool__ Found = false;
 qRH
-	level__ Level = qNIL;
+	layer__ Layer = qNIL;
 	path Path;
 qRB
 	Path.Init();
 
-	if ( !BuildPath_( PathString, Path, PathErrorRow ) )
-		qRReturn;
+	if ( BuildPath_( PathString, Path, PathErrorRow ) ) {
+		Layer = Entries.Last();
 
-	Level = Entries.Last();
+		while ( Layer != qNIL ) {
+			Found |= GetValues( Layer, Path, Values );
 
-	while ( Level != qNIL ) {
-		Found |= GetValues( Level, Path, Values );
-
-		Level = Entries.Previous( Level );
+			Layer = Entries.Previous( Layer );
+		}
 	}
 qRR
 qRT
@@ -1341,7 +1335,7 @@ qRE
 	return Found;
 }
 
-bso::bool__ rgstry::multi_level_registry_::GetValues(
+bso::bool__ rgstry::multi_layer_registry_::GetValues(
 	const tentry__ &Entry,
 	values_ &Values ) const
 {
@@ -1363,8 +1357,8 @@ qRE
 	return Found;
 }
 
-bso::bool__ rgstry::multi_level_registry_::GetValues(
-	level__ Level,
+bso::bool__ rgstry::multi_layer_registry_::GetValues(
+	layer__ Layer,
 	const tentry__ &Entry,
 	values_ &Values ) const
 {
@@ -1375,7 +1369,7 @@ qRH
 qRB
 	Path.Init();
 
-	Found = GetValues( Level, Entry.GetPath( Path ), Values, &PathErrorRow );
+	Found = GetValues( Layer, Entry.GetPath( Path ), Values, &PathErrorRow );
 
 	if ( PathErrorRow != qNIL )
 		qRFwk();
@@ -1385,12 +1379,12 @@ qRE
 	return Found;
 }
 
-bso::bool__ rgstry::multi_level_registry_::SetValue(
+bso::bool__ rgstry::multi_layer_registry_::SetValue(
 	const str::string_ &PathString,
 	const value_ &Value,
 	sdr::row__ *PathErrorRow )
 {
-	bso::bool__ Set = false;
+	bso::bool__ Set = true;
 qRH
 	value CurrentValue;
 	sdr::row__ LocalPathErrorRow = qNIL;
@@ -1400,22 +1394,21 @@ qRB
 	if ( !GetValue( PathString, CurrentValue, &LocalPathErrorRow ) ) {
 		if ( LocalPathErrorRow != qNIL ) {
 			*PathErrorRow = LocalPathErrorRow;
-			qRReturn;
+			Set = false;
 		}
-	} else 
+	} else
 		if ( CurrentValue == Value )
-			qRReturn;
+			Set = false;
 
-	SetValue( Entries.Last(), PathString, Value, PathErrorRow );
-
-	Set = true;
+	if ( Set )
+		SetValue( Entries.Last(), PathString, Value, PathErrorRow );
 qRR
 qRT
 qRE
 	return Set;
 }
 
-bso::bool__ rgstry::multi_level_registry_::SetValue(
+bso::bool__ rgstry::multi_layer_registry_::SetValue(
 	const tentry__ &Entry,
 	const value_ &Value,
 	sdr::row__ *PathErrorRow )
@@ -1433,12 +1426,12 @@ qRE
 	return Set;
 }
 
-bso::bool__ rgstry::multi_level_registry_::AddValue(
+bso::bool__ rgstry::multi_layer_registry_::AddValue(
 	const str::string_ &PathString,
 	const value_ &Value,
 	sdr::row__ *PathErrorRow )
 {
-	bso::bool__ Set = false;
+	bso::bool__ Set = true;
 qRH
 	value CurrentValue;
 	sdr::row__ LocalPathErrorRow = qNIL;
@@ -1448,20 +1441,19 @@ qRB
 	if ( !GetValue( PathString, CurrentValue, &LocalPathErrorRow ) ) {
 		if ( LocalPathErrorRow != qNIL ) {
 			*PathErrorRow = LocalPathErrorRow;
-			qRReturn;
+			Set = false;
 		}
 	}
 
-	AddValue( Entries.Last(), PathString, Value, PathErrorRow );
-
-	Set = true;
+	if ( Set )
+		AddValue( Entries.Last(), PathString, Value, PathErrorRow );
 qRR
 qRT
 qRE
 	return Set;
 }
 
-bso::bool__ rgstry::multi_level_registry_::AddValue(
+bso::bool__ rgstry::multi_layer_registry_::AddValue(
 	const tentry__ &Entry,
 	const value_ &Value,
 	sdr::row__ *PathErrorRow )
@@ -1480,7 +1472,7 @@ qRE
 }
 
 #if 0
-bso::bool__ rgstry::multi_level_registry_::SetValue(
+bso::bool__ rgstry::multi_layer_registry_::SetValue(
 	const entry___ &Entry,
 	const tags_ &Tags,
 	const value_ &Value,
@@ -1501,7 +1493,7 @@ qRE
 	return Set;
 }
 
-bso::bool__ rgstry::multi_level_registry_::SetValue(
+bso::bool__ rgstry::multi_layer_registry_::SetValue(
 	const entry___ &Entry,
 	const value_ &Value,
 	sdr::row__ *PathErrorRow )
@@ -1524,26 +1516,25 @@ qRE
 
 
 
-bso::bool__ rgstry::multi_level_registry_::Delete(
+bso::bool__ rgstry::multi_layer_registry_::Delete(
 	const str::string_ &PathString,
 	sdr::row__ *PathErrorRow )
 {
 	bso::bool__ Deleted = false;
 qRH
-	level__ Level = qNIL;
+	layer__ Layer = qNIL;
 	path Path;
 qRB
 	Path.Init();
 
-	if ( !BuildPath_( PathString, Path, PathErrorRow ) )
-		qRReturn;
+	if ( BuildPath_( PathString, Path, PathErrorRow ) ) {
+		Layer = Entries.Last();
 
-	Level = Entries.Last();
+		while ( Layer != qNIL ) {
+			Deleted |= Delete( Path, Layer );
 
-	while ( Level != qNIL ) {
-		Deleted |= Delete( Path, Level );
-
-		Level = Entries.Previous( Level );
+			Layer = Entries.Previous( Layer );
+		}
 	}
 qRR
 qRT
@@ -1552,23 +1543,23 @@ qRE
 }
 
 
-bso::bool__ rgstry::multi_level_registry_::MoveTo(
+bso::bool__ rgstry::multi_layer_registry_::MoveTo(
 	const str::string_ &Path,
-	level__ Level )
+	layer__ Layer )
 {
 	bso::bool__ Moved = false;
 qRH
 	str::string Value;
-	str::string LevelValue;
+	str::string LayerValue;
 qRB
 	Value.Init();
 
 	if ( GetValue( Path, Value ) ) {
-		LevelValue.Init();
+		LayerValue.Init();
 
-		if ( GetValue( Level, Path, LevelValue ) || ( Value != LevelValue ) ) {
+		if ( GetValue( Layer, Path, LayerValue ) || ( Value != LayerValue ) ) {
 			Delete( Path );
-			SetValue( Level, Path, Value );
+			SetValue( Layer, Path, Value );
 
 			Moved = true;
 		}
@@ -1579,8 +1570,8 @@ qRE
 	return Moved;
 }
 
-row__ rgstry::multi_level_registry_::Search(
-	level__ Level,
+row__ rgstry::multi_layer_registry_::Search(
+	layer__ Layer,
 	const tentry__ &Entry ) const
 {
 	row__ Row = qNIL;
@@ -1590,7 +1581,7 @@ qRB
 	Path.Init();
 	Entry.GetPath( Path );
 
-	Row = Search( Level, Path );
+	Row = Search( Layer, Path );
 qRR
 qRT
 qRE
@@ -1598,28 +1589,27 @@ qRE
 }
 
 
-row__ rgstry::multi_level_registry_::Search(
+row__ rgstry::multi_layer_registry_::Search(
 	const str::string_ &PathString,
-	level__ &Level,
+	layer__ &Layer,
 	sdr::row__ *PathErrorRow ) const
 {
 	row__ Row = qNIL;
 qRH
 	path Path;
 qRB
-	Level = qNIL;
+	Layer = qNIL;
 	Path.Init();
 
-	if ( !BuildPath_( PathString, Path, PathErrorRow ) )
-		qRReturn;
+	if ( BuildPath_( PathString, Path, PathErrorRow ) ) {
+		Layer = Entries.Last();
 
-	Level = Entries.Last();
+		while ( (Layer != qNIL) && (Row == qNIL) ) {
+			Row = Search( Layer, Path );
 
-	while ( ( Level != qNIL ) && ( Row == qNIL ) ) {
-		Row = Search( Level, Path );
-
-		if ( Row == qNIL )
-			Level = Entries.Previous( Level );
+			if ( Row == qNIL )
+				Layer = Entries.Previous( Layer );
+		}
 	}
 qRR
 qRT
@@ -1627,9 +1617,9 @@ qRE
 	return Row;
 }
 
-row__ rgstry::multi_level_registry_::Search(
+row__ rgstry::multi_layer_registry_::Search(
 	const tentry__ &Entry,
-	level__ &Level ) const
+	layer__ &Layer ) const
 {
 	row__ Row = qNIL;
 qRH
@@ -1639,7 +1629,7 @@ qRB
 	Path.Init();
 	Entry.GetPath( Path );
 
-	Row = Search( Path, Level, &PathErrorRow );
+	Row = Search( Path, Layer, &PathErrorRow );
 
 	if ( PathErrorRow != qNIL )
 		qRFwk();
@@ -1703,22 +1693,21 @@ qRB
 	if ( FFlow.Init( FileName, err::hUserDefined ) != tol::rSuccess ) {
 		Context.Status = sUnableToOpenFile;
 		Context.Coordinates.FileName = FileName;
-		qRReturn;
+	} else {
+		XFlow.Init( FFlow, utf::f_Default );
+
+		if ( !Criterions.Directory.IsEmpty() )
+			qRFwk();
+
+		Location.Init();
+		Buffer.Init();
+		Root = Fill( XFlow, xpp::criterions___( fnm::GetLocation( FileName, Location ).UTF8( Buffer ), 0, Criterions.CypherKey, Criterions.Namespace ), RootPath, Registry, Context );	//NOTA: 'Layer' member is not used.
+
+		if ( Root == qNIL )
+			if ( Context.Status == sParseError )
+				if ( Context.Coordinates.FileName.IsEmpty() )
+					Context.Coordinates.FileName = FileName;
 	}
-
-	XFlow.Init( FFlow, utf::f_Default );
-
-	if ( !Criterions.Directory.IsEmpty() )
-		qRFwk();
-
-	Location.Init();
-	Buffer.Init();
-	Root = Fill( XFlow, xpp::criterions___( fnm::GetLocation( FileName, Location ).UTF8( Buffer ), 0, Criterions.CypherKey, Criterions.Namespace ), RootPath, Registry, Context );	//NOTA: 'Level' member is not used.
-
-	if ( Root == qNIL )
-		if ( Context.Status == sParseError )
-			if ( Context.Coordinates.FileName.IsEmpty() )
-				Context.Coordinates.FileName = FileName;
 qRR
 qRT
 qRE
@@ -1772,7 +1761,7 @@ static void HandleTag_(
 			} else if ( *Source == 0 )
 				qRFwk();
 
-		} 
+		}
 
 		Target.Append( *Source++ );
 	}
@@ -1793,7 +1782,7 @@ const str::string_ &rgstry::entry___::_GetPath(
 {
 qRH
 	str::string Buffer;
-	tagsbs::short_tags_callback__ *TagSubstitutionCallback = NULL;
+	tagsbs::cShortTags *TagSubstitutionCallback = NULL;
 qRB
 	Buffer.Init( _Path );
 

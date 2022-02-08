@@ -17,8 +17,8 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef ERR__INC
-# define ERR__INC
+#ifndef ERR_INC_
+# define ERR_INC_
 
 # define ERR_NAME		"ERR"
 
@@ -67,18 +67,18 @@ namespace err {
 
 	enum type {
 		tAllocation,	// (qRAlc) Allocation failure.
-		tSystem,		// (qRSys) System failure : a C/C++ standard or system function failed but should not, or returned a incoherent value.
-		tVacant,		// (qRVct) Call to a vacant function (mainly because it is not implemneted yet).
+		tSystem,		// (qRSys) System failure : a C/C++ standard or system function failed but should not, or returned an incoherent value.
+		tVacant,		// (qRVct) Call to a vacant function (mainly because it is not implemented yet).
 		tLimitation,	// (qRLmt) Limitation overflow.
 		tFramework,		// (qRFwk) Misuse of the framework. should not be used outside the framework. Use 'tGeneric' instead.
 		tForbidden,		// (qRFbd) Call to a forbidden function.
 		tLibrary,		// (qRLbr) A C/C++ standard or system library returns an error.
 		tChecker,		// (qRChk) A checking fails.
+		tUnexpected,	// A library or module has an unexpected behavior.
 		tGeneric,		// (qRGnr) Generic error. Like 'tFramework', but not in the framework.
 		t_amount,
 		t_None,			// No error.
-		t_Free,			// (ERRFree) Not really an error. Allows the use or ther error mechanism.
-		t_Return,		// Make the handling of 'ERRReturn' easier.
+		t_Free,			// (ERRFree) Not really an error. Allows the use or the error mechanism.
 		t_Abort,		// Make the handling of 'ERRAbort()' easier.
 		t_Undefined
 	};
@@ -112,11 +112,11 @@ namespace err {
 		}
 		void Init( void );
 		void Set(
-			const char *File = NULL,
+			const char *File = nullptr,
 			int Line = 0,
 			err::type Type = t_Undefined );
 		void SetAndLaunch(
-			const char *File = NULL,
+			const char *File = nullptr,
 			int Line = 0,
 			err::type Type = t_Undefined );
 	};
@@ -137,6 +137,7 @@ namespace err {
 # define qRFbd()	ERRCommon( err::tForbidden )
 # define qRLbr()	ERRCommon( err::tLibrary )
 # define qRChk()	ERRCommon( err::tChecker )
+# define qRUnx()	ERRCommon( err::tUnexpected )
 # define qRGnr()	ERRCommon( err::tGeneric )
 
 
@@ -175,7 +176,7 @@ namespace err {
 #  define qRB	if ( !setjmp( ERRJmp ) ) {
 
 // 'Error' : to execute if an error occurs.
-#  define qRR		} else { ERRPutJ( ERROJmp ); ERRNoError = false; if ( ERRType != err::t_Return ) {
+#  define qRR		} else { ERRPutJ( ERROJmp ); ERRNoError = false; {
 
 // 'Tail' : to execute, error or not.
 #  define qRT		} }
@@ -188,7 +189,7 @@ namespace err {
 // pr�c�de les d�clarations
 #  define qRB	try {
 // pr�c�de les instructions proprement dites
-#  define qRR		} catch ( err::err___ ) { ERRNoError = false; if ( ERRType != err::t_Return ) {
+#  define qRR		} catch ( err::err___ ) { ERRNoError = false; {
 // pr�c�de les instructions � effectuer lors d'une erreur
 #  define qRT		} }
 // pr�c�de les instructions � ex�cuter, erreur ou pas
@@ -198,12 +199,11 @@ namespace err {
 # endif
 
 # define ERRTestEnd		if ( ERRHit() && !ERRNoError && err::Concerned() ) {\
-							if ( ERRType == err::t_Return ) {\
-								ERRRst()
+							{
 
 // 'End' : end of error handling bloc.
-# define qRE					ERRCommonEnd ERRTestEnd } else ERRT();  };
-# define qRFE( action )			ERRCommonEnd ERRTestEnd } else { action; if ( ERRHit() && err::Concerned() ) ERRRst(); } };
+# define qRE					ERRCommonEnd ERRTestEnd } ERRT();  };
+# define qRFE( action )			ERRCommonEnd ERRTestEnd } { action; if ( ERRHit() && err::Concerned() ) ERRRst(); } };
 # define qRFH					qRH
 # define qRFB					qRB
 # define qRFR					qRR
@@ -230,7 +230,7 @@ namespace err {
 		err::type Type,
 		buffer__ &Buffer );
 
-# ifndef ERR__COMPILATION
+# ifndef ERR_COMPILATION_
 	inline const char *Message( buffer__ &Buffer )
 	{
 		return err::Message( ERRFile, ERRLine, ERRType, Buffer );

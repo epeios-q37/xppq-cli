@@ -17,17 +17,10 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#define MTX__COMPILATION
+#define MTX_COMPILATION_
 
 #include "mtx.h"
 
 #include "tht.h"
 
 using namespace mtx;
-
-void mtx::Defer_( void )
-{
-	tol::InitializeRandomGenerator();
-	tht::Defer( ( (bso::uint__)tht::GetTID() + rand() ) % 5 + 1 ); // 'rand() donne-t'il la mme suite dans des coeurs diffrents ?
-}
-

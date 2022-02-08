@@ -17,23 +17,18 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#define SCLLOCALE__COMPILATION
+#define SCLL_COMPILATION_
 
-#include "scllocale.h"
+#include "scll.h"
 
-#include "lcl.h"
-#include "fnm.h"
-#include "dir.h"
-#include "cio.h"
+#include "sclm.h"
 
-#include "sclmisc.h"
-
-using namespace scllocale;
+using namespace scll;
 
 namespace {
 	rRack *RackPointer_ = NULL;
 
-	using lcl::level__;
+	using lcl::layer__;
 
 	rRack &Rack_( void )
 	{
@@ -49,7 +44,7 @@ namespace {
 	}
 }
 
-void scllocale::SetLocale( rRack &Rack )
+void scll::SetLocale( rRack &Rack )
 {
 	if ( RackPointer_ != NULL )
 #ifdef CPE_S_POSIX	// Under 'Posix' (at least under 'GNU/Linux') 'RackPointer_' is shared between libraries,
@@ -61,14 +56,14 @@ void scllocale::SetLocale( rRack &Rack )
 	RackPointer_ = &Rack;
 }
 
-rRack &scllocale::GetRack( void )
+rRack &scll::GetRack( void )
 {
 	return Rack_();
 }
 
 #define C( name ) case t##name: return #name; break
 
-const char *scllocale::GetLabel( target__ Target )
+const char *scll::GetLabel( target__ Target )
 {
 	switch ( Target ) {
 		C( Main );
@@ -83,66 +78,48 @@ const char *scllocale::GetLabel( target__ Target )
 }
 
 
-const lcl::locale_ &scllocale::GetLocale( void )
+const lcl::locale_ &scll::GetLocale( void )
 {
 	return Locale_();
 }
-/*
-static void GetLocaleFileParsingErrorMeaning_(
-	const rgstry::context___ &Context,
-	lcl::meaning_ &Meaning )
-{
-qRH
-	lcl::meaning MeaningBuffer;
-qRB
-	Meaning.SetValue( SCLLOCALE_NAME "_LocaleFileParsingError" );
 
-	MeaningBuffer.Init();
-	rgstry::GetMeaning( Context, MeaningBuffer );
-
-	Meaning.AddTag( MeaningBuffer );
-qRR
-qRT
-qRE
-}
-*/
-static level__ GetLevel_( target__ Target )
+static layer__ GetLayer_( target__ Target )
 {
 	switch ( Target ) {
 	case tMain:
-		return Rack_().SoftwareLevel;
+		return Rack_().SoftwareLayer;
 		break;
 	case tConfiguration:
-		return Rack_().ConfigurationLevel;
+		return Rack_().ConfigurationLayer;
 		break;
 	case tProject:
-		return Rack_().ProjectLevel;
+		return Rack_().ProjectLayer;
 		break;
 	default:
 		qRFwk();
 		break;
 	}
 
-	return rgstry::UndefinedLevel;	// Pour &viter une 'warning'.
+	return rgstry::UndefinedLayer;	// Pour &viter une 'warning'.
 }
 
-void scllocale::Dump(
+void scll::Dump(
 	target__ Target,
 	bso::bool__ RootToo,
 	xml::rWriter &Writer )
 {
-	Locale_().Dump( GetLevel_( Target ), qNIL, RootToo, Writer );
+	Locale_().Dump( GetLayer_( Target ), qNIL, RootToo, Writer );
 }
 
 
-void scllocale::Erase( target__ Target )
+void scll::Erase( target__ Target )
 {
-	Locale_().Erase( GetLevel_( Target ) );
+	Locale_().Erase( GetLayer_( Target ) );
 }
 
 namespace {
 	void Load_(
-		level__ Level,
+		layer__ Layer,
 		xtf::extended_text_iflow__ &Flow,
 		const fnm::name___ &Directory,
 		const char *ErrorLabel )
@@ -151,26 +128,15 @@ namespace {
 		rgstry::context___ Context;
 	qRB
 		Context.Init();
-		if ( !Locale_().Insert( Level, Flow, xpp::criterions___( Directory ), rgstry::rthIgnore, Context ) )
-			sclmisc::ReportParsingErrorAndAbort( ErrorLabel, Context );
+		if ( !Locale_().Insert( Layer, Flow, xpp::criterions___( Directory ), rgstry::rthIgnore, Context ) )
+			sclm::ReportParsingErrorAndAbort( ErrorLabel, Context );
 	qRR
 	qRT
 	qRE
 	}
 }
-/*
-void scllocale::Set(
-	target__ Target,
-	const rgstry::entry__ &Entry )
-{
-	rgstry::level__ Level = GetLevel_( Target );
 
-	Locale_().Erase( Level );
-
-	Locale_().Set( Level, Entry );
-}
-*/
-void scllocale::Load(
+void scll::Load(
 	target__ Target,
 	xtf::extended_text_iflow__ &Flow,
 	const fnm::name___ &Directory )
@@ -179,23 +145,23 @@ void scllocale::Load(
 
 	switch ( Target ) {
 	case tMain:
-		ErrorLabel = SCLLOCALE_NAME "_LocaleParsingError";
+		ErrorLabel = SCLL_NAME "_LocaleParsingError";
 		break;
 	case tConfiguration:
-		ErrorLabel = SCLLOCALE_NAME "_ConfigurationLocaleParsingError";
+		ErrorLabel = SCLL_NAME "_ConfigurationLocaleParsingError";
 		break;
 	case tProject:
-		ErrorLabel = SCLLOCALE_NAME "_ProjectLocaleParsingError";
+		ErrorLabel = SCLL_NAME "_ProjectLocaleParsingError";
 		break;
 	default:
 		qRFwk();
 		break;
 	}
 
-	return Load_( GetLevel_( Target ), Flow, Directory, ErrorLabel );
+	return Load_( GetLayer_( Target ), Flow, Directory, ErrorLabel );
 }
 
-void scllocale::Fill(
+void scll::Fill(
 	target__ Target,
 	const fnm::name___ &Directory,
 	const str::string_ &XML )
@@ -206,14 +172,14 @@ qRH
 qRB
 	Flow.Init( XML );
 	XFlow.Init( Flow, utf::f_Default );
-	if ( !Locale_().Fill( GetLevel_( Target ), XFlow, xpp::criterions___( Directory ), NULL ) )
+	if ( !Locale_().Fill( GetLayer_( Target ), XFlow, xpp::criterions___( Directory ), NULL ) )
 		qRFwk();
 qRR
 qRT
 qRE
 }
 
-void scllocale::Insert(
+void scll::Insert(
 	target__ Target,
 	const fnm::name___ &Directory,
 	const str::string_ &XML,
@@ -225,7 +191,7 @@ qRH
 qRB
 	Flow.Init( XML );
 	XFlow.Init( Flow, utf::f_Default );
-	if ( !Locale_().Insert( GetLevel_( Target ), XFlow, xpp::criterions___( Directory ), RootTagHandling  ) )
+	if ( !Locale_().Insert( GetLayer_( Target ), XFlow, xpp::criterions___( Directory ), RootTagHandling  ) )
 		qRFwk();
 qRR
 qRT
@@ -234,23 +200,26 @@ qRE
 
 // Bien que dfinit dans un '.cpp', et propre  ce '.cpp', VC++ se mlange les pinceaux avec le 'callback__' dfinit dans 'sclxhtml.cpp', d'o le 'namespace'.
 namespace {
-	typedef tagsbs::long_tags_callback__ _callback__;
+	typedef tagsbs::cLongTagsString cTagsCallback_;
 
-	class callback__
-	: public _callback__
+	class sTagsCallback_
+	: public cTagsCallback_
 	{
 	private:
 		char _Marker;
 		const char *_Language;
 	protected:
-		virtual bso::bool__ TAGSBSGetTagValue(
+		virtual bso::bool__ TAGSBSHandleTag(
 			const str::string_ &Tag,
-			str::string_ &Value ) override
+			flw::rWFlow &Output) override
 		{
 		qRH
 			TOL_CBUFFER___ Buffer;
+			str::wString Value;
 		qRB
+      Value.Init();
 			Locale_().GetTranslation( Tag.Convert(Buffer), _Language, Value );
+			Value.WriteToFlow(Output, false);
 		qRR
 		qRT
 		qRE
@@ -261,16 +230,14 @@ namespace {
 		{
 			_Marker = 0;
 			_Language = NULL;
-			_callback__::reset( P );
 		}
-		E_CVDTOR( callback__ );
+		E_CVDTOR( sTagsCallback_ );
 		void Init(
 			char Marker,
 			const char *Language )
 		{
 			_Marker = Marker;
 			_Language = Language;
-			_callback__::Init();
 		}
 	};
 
@@ -383,7 +350,7 @@ namespace {
 	*/
 }
 
-bso::bool__ scllocale::Normalize_(
+bso::bool__ scll::Normalize_(
 	const str::string_ &In,
 	str::string_ &Out )
 {
@@ -402,13 +369,12 @@ qRB
 		case '\n':
 		case '\r':
 		case '\t':
-			if ( Escape )
-				qRReturn;
+			if ( !Escape ) {
+				if ( TFlow.Flow().AmountWritten() )
+					TFlow << ' ';
 
-			if ( TFlow.Flow().AmountWritten() )
-				TFlow << ' ';
-
-			Row = SkipLFCRTab_( In, Row );
+				Row = SkipLFCRTab_( In, Row );
+			}
 			break;
 		case 'n':
 		case 'r':
@@ -440,14 +406,15 @@ qRB
 				Escape = true;
 			break;
 		default:
-			if ( Escape )
-				qRReturn;
-			else
+			if ( !Escape )
 				TFlow << C;
 			break;
 		}
 
 		Row = In.Next( Row );
+
+		if ( Escape )
+			break;
 	}
 
 	if ( !Escape )
@@ -458,64 +425,28 @@ qRE
 	return Success;
 }
 
-/*
-const str::string_ &scllocale::GetTranslation(
-	const str::dString &Text,
-	const char *Language,
-	str::string_ &Translation )
-{
-	return GetTranslation_( Text, Language, Translation );
-}
-
-const str::string_ &scllocale::GetTranslation(
-	const char *Text,
-	const char *Language,
-	str::string_ &Translation )
-{
-	return GetTranslation_( Text, Language, Translation );
-}
-
-const str::string_ &scllocale::GetTranslation(
-	const lcl::meaning_ &Meaning,
-	const char *Language,
-	str::string_ &Translation )
-{
-	return GetTranslation_( Meaning, Language, Translation );
-}
-*/
-
-void scllocale::TranslateTags(
+void scll::TranslateTags(
 	str::string_ &String,
 	const char *Language,
 	char Marker )
 {
-	callback__ Callback;
+	sTagsCallback_ Callback;
 
 	Callback.Init( Marker, Language );
 
 	tagsbs::SubstituteLongTags( String, Callback, Marker );
 }
 
-void scllocale::TranslateTags(
+void scll::TranslateTags(
 	const str::string_ &In,
 	const char *Language,
 	str::string_ &Out,
 	char Marker )
 {
-	callback__ Callback;
+	sTagsCallback_ Callback;
 
 	Callback.Init( Marker, Language );
 
 	tagsbs::SubstituteLongTags( In, Callback, Out, Marker );
 }
 
-/*
-Q37_GCTOR( scllocale )
-{
-	Locale_.Init();
-
-	SoftwareLevel_ = Locale_.CreateEmbedded( rgstry::name( "Software" ) );
-	ConfigurationLevel_ = Locale_.CreateEmbedded( rgstry::name( "Configuration" ) );
-	ProjectLevel_ = Locale_.CreateEmbedded( rgstry::name( "Project" ) );
-}
-*/

@@ -17,8 +17,8 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef TOL__INC
-# define TOL__INC
+#ifndef TOL_INC_
+# define TOL_INC_
 
 # define TOL_NAME		"TOL"
 
@@ -65,9 +65,11 @@
 
 # include "bso.h"
 
-// Predeclarations
-namespace uys {
-	struct sHook;
+// Predeclarations.
+
+// Should be 'uys::sHook …", but cannot predeclare typedefs.
+namespace sdr {
+  class storage_driver__;
 }
 
 namespace ags {
@@ -91,6 +93,8 @@ namespace str {
 # define TOL_ROW_( name ) E_TMIMIC__( sdr::bRow, name )
 
 # define qROW( name ) TOL_ROW_( s##name )
+// Nota: although a static object, defining it as resource containing object
+// that it is pointing to an object which has to be released by the proper function.
 # define qROWr( name ) TOL_ROW_( r##name )
 
 #define qROWS( name )\
@@ -415,11 +419,12 @@ public:\
 	qCRM( type, method, variable )
 
 # define qCDEF( type, name, value ) const type name = value
+# define qCDEFS(name, value) qCDEF(str::wString, name, value)
 
 # define qFLAG( name, value )	qCDEF( bso::sFlag, f##name, 2 << ( value ) )
 
 /* Transforms n arguments in 1.
-Useful when a macro argument contains one or more coma. 
+Useful when a macro argument contains one or more coma.
 ex. : 'qCOVER2( a, b )' -> 'a, b' */
 # define qCOVER2(a, b)					a, b
 # define qCOVER3(a, b, c)				a, b, c
@@ -536,7 +541,7 @@ namespace tol{
 	typedef bDateAndTime bDate;
 	typedef bDateAndTime bTime;
 
-	template <typename t> class rBuffer // Dynamic buffer of objects of type 't'. Its size never shrinks, so it can(t be used to know the true amount of objects it contains.
+	template <typename t> class hBuffer // Dynamic buffer of objects of type 't'. Its size never shrinks, so it can(t be used to know the true amount of objects it contains.
 	{
 	private:
 		t *_Pointer;
@@ -553,7 +558,7 @@ namespace tol{
 						qRAlc();
 
 					return false;
-				} else 
+				} else
 					_Pointer = (t *)P;
 
 				_Extent = Size;
@@ -575,14 +580,7 @@ namespace tol{
 			_Pointer = NULL;
 			_Extent = 0;
 		}
-		rBuffer( void )
-		{
-			reset( false );
-		}
-		~rBuffer( void )
-		{
-			reset();
-		}
+		qCDTOR(hBuffer)
 		void Init( void )
 		{
 			qRFwk();	// C'est un 'buffer' ; pas d'initailisation.
@@ -590,7 +588,7 @@ namespace tol{
 		void Forget( void )	// Evite que le ponteur sous-jacent soit effac  la destruction de l'objet.
 		{
 			reset( false );
-			
+
 		}
 		t *Malloc(
 			bso::size__ Amount,
@@ -629,9 +627,9 @@ namespace tol{
 		{
 			return _Pointer;
 		}
-		rBuffer &operator =( const rBuffer & )
+		hBuffer &operator =( const hBuffer & )
 		{
-			qRFwk(); 
+			qRFwk();
 
 			return *this;
 		}
@@ -642,8 +640,8 @@ namespace tol{
 	};
 }
 
-# define qBUFFERr( t )	tol::rBuffer<t>
-# define qCBUFFERr		qBUFFERr( bso::char__ )
+# define qBUFFERh( t )	tol::hBuffer<t>
+# define qCBUFFERh		qBUFFERh( bso::char__ )
 
 namespace tol {
 	// A basic object 't' becomes a normal object.
@@ -662,7 +660,7 @@ namespace tol {
 //			S_.Object.reset( P );	// The object is already destroyed by the one which features the reference.
 		}
 		qCVDTOR( dObject );
-		void plug( uys::sHook &Hook )
+		void plug(sdr::storage_driver__ &Hook)  // Should be 'uys::sHook …", but cannot predeclare typedefs (see top of file).
 		{
 			// Standardization.
 		}
@@ -700,7 +698,7 @@ namespace tol {
 /****** Old version ******/
 /*************************/
 
-# define E_ENUM( name )	enum name##__ : bso::enum__ 
+# define E_ENUM( name )	enum name##__ : bso::enum__
 
 namespace ntvstr {
 	class string___;
@@ -839,7 +837,7 @@ namespace tol
 	{
 	private:
 		type Value_;
-		flavor_ F_( void ) const 
+		flavor_ F_( void ) const
 		{
 			if ( Value_ >= Undefined )
 				qRFwk();
@@ -1120,7 +1118,8 @@ Utile pour afficher le numro de ligne dans un #pragma message (...). */
 // Utilisation :
 // #pragma message(__LOC__ " : Message")
 
-
+// Checkpoint.
+# define CPq	cio::COut << '(' << tol::TUTime() << ") " __FILE__ ":" E_STRING(__LINE__) << txf::nl << txf::commit
 
 
 # define E_AUTO_( Name )	\
@@ -1362,26 +1361,41 @@ namespace tol {
 	bso::size__ GetMemoryUsage( void );
 # endif
 
-#ifndef CPE_F_MT
-	inline const char *Date( void )
+	inline const char *TUDate( void )
 	{
 		static buffer__ Buffer;
 
 		return Date( Buffer );
 	}
 
-	inline const char *Time( void )
+	inline const char *TUTime( void )
 	{
 		static buffer__ Buffer;
 
 		return Time( Buffer );
 	}
 
-	inline const char *DateAndTime( void )
+	inline const char *TUDateAndTime( void )
 	{
 		static buffer__ Buffer;
 
 		return DateAndTime( Buffer );
+	}
+
+#ifndef CPE_F_MT
+	inline const char *Date( void )
+	{
+	  return TUDate();
+	}
+
+	inline const char *Time( void )
+	{
+	  return TUTime();
+	}
+
+	inline const char *DateAndTime( void )
+	{
+	  return TUDateAndTime();
 	}
 #endif
 
@@ -1392,7 +1406,7 @@ namespace tol {
 	typedef bso::u32__ coeff__;
 # define TOL_COEFF_MAX	BSO_U32_MAX
 
-// Horloge de prcision. N'est utile que pour comparer 2 
+// Horloge de prcision. N'est utile que pour comparer 2
 # ifdef TOL__WIN
 	E_TRMIMIC__( LARGE_INTEGER, tick__ );
 	extern LARGE_INTEGER	_TickFrequence;
@@ -1533,28 +1547,28 @@ namespace tol {
 #  error "Unhandled platform !"
 # endif
 
-	inline diff__ SecDiff( 
+	inline diff__ SecDiff(
 		tick__ Op1,
 		tick__ Op2 )
 	{
 		return _Diff( Op1, Op2, 1 );
 	}
 
-	inline diff__ MilliSecDiff( 
+	inline diff__ MilliSecDiff(
 		tick__ Op1,
 		tick__ Op2 )
 	{
 		return _Diff( Op1, Op2, 1000 );
 	}
 
-	inline diff__ MicroSecDiff( 
+	inline diff__ MicroSecDiff(
 		tick__ Op1,
 		tick__ Op2 )
 	{
 		return _Diff( Op1, Op2, 1000000 );
 	}
 
-	inline diff__ NanoSecDiff( 
+	inline diff__ NanoSecDiff(
 		tick__ Op1,
 		tick__ Op2 )
 	{
@@ -1581,7 +1595,7 @@ namespace tol {
 	inline unsigned int InitializeRandomGenerator( void )
 	{
 		unsigned int Seed = (unsigned int)time( NULL );
-	
+
 		srand( Seed );
 
 		return Seed;
@@ -1711,7 +1725,7 @@ namespace tol {
 	{\
 		return Object Exists( P );\
 	}
-	
+
 /* Lorsque 'Object' contient une virgule, on ne peut utiliser E_XNAVt(...), mme en utilisant E_COVER2(...)
 car 'E_XNAVt(...)' fait elle-mme appel  une macro. Aussi faudra-t'il explicitement appel 'E_NAVt(...)' et cette macro-ci
 pour parvenir au mme rsultat que 'E_XNAVt(...)'. */
@@ -1890,7 +1904,7 @@ namespace tol {
 		des mthodes virtuelles.
 	*/
 
-# define buffer___	rBuffer
+# define buffer___	hBuffer
 
 # define E_BUFFER___( t )	buffer___<t>
 # define TOL_CBUFFER___ tol::E_BUFFER___( bso::char__ )
@@ -1901,21 +1915,21 @@ template <typename type, type False, type Error, type Undefined> bso::bool__ ope
 	tol::extended_enum__<type, False, Error, Undefined> Op1,
 	tol::extended_enum__<type, False, Error, Undefined> Op2 )
 {
-	return Op1() == Op2();
+	return Op1.Value() == Op2.Value();
 }
 
 template <typename type, typename _type, type False, type Error, type Undefined> bso::bool__ operator==(
 	_type Op1,
 	tol::extended_enum__<type, False, Error, Undefined> Op2 )
 {
-	return Op1 == Op2();
+	return Op1 == Op2.Value();
 }
 
 template <typename type, typename _type, type False, type Error, type Undefined> bso::bool__ operator==(
 	tol::extended_enum__<type, False, Error, Undefined> Op1,
 	_type Op2 )
 {
-	return Op1() == Op2;
+	return Op1.Value() == Op2;
 }
 
 template <typename type, type False, type Error, type Undefined> bso::bool__ operator!=(
@@ -1929,7 +1943,7 @@ template <typename type, typename _type, type False, type Error, type Undefined>
 	_type Op1,
 	tol::extended_enum__<type, False, Error, Undefined> Op2 )
 {
-	return Op1 != Op2();
+	return Op1 != Op2.Value();
 }
 
 template <typename type, typename _type, type False, type Error, type Undefined> bso::bool__ operator!=(
@@ -2210,6 +2224,7 @@ template <typename type, typename _type, type False, type Error, type Undefined>
 namespace tol {
 	typedef delay__ sDelay;
 	typedef timer__ sTimer;
+	typedef tick__ sTick;
 	typedef time_t sTimeStamp;
 
 	void Crash( void );	// Crashes deliberately the program. For testing of daemons watchdog.
@@ -2332,10 +2347,25 @@ namespace tol {
 
 	/* End 'Init' serialization */
 
+	bso::sBool EnvExists(const str::dString &Name);
+
+	bso::sBool EnvExists(const char *Name);
+
 	// 'false' if env var doesn't exist.
 	bso::sBool GetEnv(
 		const str::dString &Name,
 		str::dString &Value );
+
+	// 'false' if env var doesn't exist.
+	bso::sBool GetEnv(
+		const char *Name,
+		str::dString &Value );
+
+  // Returns true if in dev environment.
+  inline bso::sBool IsDev(void)
+  {
+    return EnvExists("Q37_EPEIOS");
+  }
 
 	template <typename row, typename container> inline row Search(
 		const str::dString &ID,

@@ -17,8 +17,8 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#ifndef LCL__INC
-# define LCL__INC
+#ifndef LCL_INC_
+# define LCL_INC_
 
 # define LCL_NAME		"LCL"
 
@@ -35,7 +35,7 @@
 # define LCL_TAG_MARKER_C	'%'
 # define LCL_TAG_MARKER_S	"%"
 
-# define LCL_UNDEFINED_LEVEL	RGSTRY_UNDEFINED_LEVEL
+# define LCL_UNDEFINED_LAYER	RGSTRY_UNDEFINED_LAYER
 
 /*************/
 /**** OLD ****/
@@ -44,9 +44,9 @@
 namespace lcl {
 	using rgstry::status__;
 	using rgstry::context___;
-	using rgstry::level__;
-	using str::strings_;
-	using str::strings;
+	using rgstry::layer__;
+	typedef str::dStrings strings_;
+    typedef str::wStrings strings;
 
 	E_ROW( vrow__ );	// 'value row'.
 	E_ROW( brow__ );	// 'basic row'.
@@ -241,7 +241,7 @@ namespace lcl {
 		}
 		template <typename i> void AddTag( i I )
 		{
-			bso::bInteger Buffer;
+			bso::pInteger Buffer;
 
 			AddTag( bso::Convert( I, Buffer ) );
 		}
@@ -273,7 +273,7 @@ namespace lcl {
 	E_AUTO( meaning )
 
 	namespace {
-		typedef rgstry::multi_level_registry_ _registry_;
+		typedef rgstry::multi_layer_registry_ _registry_;
 	}
 
 	class locale_

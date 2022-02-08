@@ -17,7 +17,7 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#define STR__COMPILATION
+#define STR_COMPILATION_
 
 #include "str.h"
 
@@ -119,7 +119,7 @@ flw::iflow__ &str::operator >>(
 
 	return IStream;
 }
-	
+
 
 txf::text_oflow__ &str::operator <<(
 	txf::text_oflow__ &OStream,
@@ -227,8 +227,8 @@ void string_::FilterOut( char Model )
 	Allocate( Dest );
 }
 
-// Could be easily optimized, would be when I have some time.
-void string_::StripLeadingCharacter( char Model )
+// Could be easily optimized.
+sdr::sSize string_::AmountOfLeadChars( char Model ) const
 {
 	sdr::row__ Row = First();
 	sdr::size__ Amount = 0;
@@ -238,11 +238,11 @@ void string_::StripLeadingCharacter( char Model )
 		Row = Next( Row );
 	}
 
-	Remove( 0, Amount );
+	return Amount;
 }
 
 // Could be easily optimized, would be when I have some time.
-void string_::StripTailingCharacter( char Model )
+sdr::sSize string_::AmountOfTailChars(char Model) const
 {
 	sdr::row__ Row = Last();
 	sdr::size__ Amount = 0;
@@ -252,7 +252,7 @@ void string_::StripTailingCharacter( char Model )
 		Row = Previous( Row );
 	}
 
-	Truncate( Amount );
+	return Amount;
 }
 
 bso::sBool string_::IsBlank( void ) const
@@ -420,7 +420,7 @@ template <typename sint, typename uint> sint GenericSignedConversion_(
 		if ( String.Next( Begin ) == qNIL ) {
 			*ErrP = *Begin + 1;
 			return 0;
-		} else 
+		} else
 			return -(sint)GenericUnsignedConversion_<uint>( String, String.Next( Begin ), ErrP, Base, -NegativeLimit );
 	else if ( String.Get( Begin ) == '+' )
 		if ( String.Next( Begin ) == qNIL ) {
@@ -429,9 +429,9 @@ template <typename sint, typename uint> sint GenericSignedConversion_(
 			else
 				qRFwk();
 			return 0;
-		} else 
+		} else
 			return (sint)GenericUnsignedConversion_( String, String.Next( Begin ), ErrP, Base, PositiveLimit );
-	else 
+	else
 		return (sint)GenericUnsignedConversion_( String, Begin, ErrP, Base, PositiveLimit );
 }
 
@@ -525,3 +525,11 @@ bso::lfloat__ string_::ToLF(
 	else
 		return Result;
 }
+
+namespace {
+    string Empty_ = wString();
+}
+
+const string_ &str::Empty = Empty_;
+
+

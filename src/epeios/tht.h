@@ -17,10 +17,10 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-// THread Tools 
+// THread Tools
 
-#ifndef THT__INC
-# define THT__INC
+#ifndef THT_INC_
+# define THT_INC_
 
 # define THT_NAME		"THT"
 
@@ -49,7 +49,7 @@
 #  include <stdlib.h>
 #  include <signal.h>
 # else
-#  error 
+#  error
 # endif
 
 # define THT_UNDEFINED_THREAD_ID	0	// Totaly arbitrary ; should correspond to the system thread, so should never be returned by 'GetTID()'.
@@ -106,7 +106,7 @@ namespace tht {
 	class rCore_
 	{
 	private:
-		mtx::rHandler Mutex_;
+		mtx::rMutex Mutex_;
 		void Release_( void )
 		{
 			if ( Mutex_ != mtx::Undefined )
@@ -149,11 +149,11 @@ namespace tht {
 
 			return mtx::TryToLock( Mutex_ );
 		}
-		void Lock( void )
+		bso::sBool Lock( void )
 		{
 			Test_();
 
-			mtx::Lock( Mutex_ );
+			return mtx::Lock( Mutex_ );
 		}
 		void Unlock( void )
 		{
@@ -161,7 +161,7 @@ namespace tht {
 
 			mtx::Unlock( Mutex_ );
 		}
-		// Retruns 'true' if registry was lcoekd.
+		// Returns 'true' if registry was locked.
 		bso::sBool UnlockIfLocked( void )
 		{
 			if ( mtx::IsLocked(Mutex_) ) {
@@ -174,8 +174,8 @@ namespace tht {
 
 	typedef bso::sUInt sCounter_;
 	qCDEF( sCounter_, CounterMax_, bso::UIntMax );
-	
-	// Ensure that a ressource is only accessed by one thread at a time.
+
+	// Ensure that a resource is only accessed by one thread at a time.
 	// All consecutive locking from same thread does not lock again.
 	// Unlocking is only effective after be called as much as being locked.
 	class rLocker {
@@ -198,23 +198,26 @@ namespace tht {
 		{
 			return Core_.IsLocked();
 		}
-		void Lock( void )
+		bso::sBool Lock( void )
 		{
+		  bso::sBool WasNotLocked = true;
 			tht::sTID TID = GetTID();
 
 			if ( Core_.ThreadID != TID ) {
-				Core_.Lock();
+				WasNotLocked = Core_.Lock();
 
 				if ( Core_.ThreadID == Undefined )
 					Core_.ThreadID = TID;
 				else
 					qRFwk();
-			}
+			} // Else was not locked by another thread.
 
 			if ( Counter_ == CounterMax_ )
 				qRLmt();
 
 			Counter_++;
+
+			return WasNotLocked;
 		}
 		void Unlock( void )
 		{
@@ -277,65 +280,97 @@ namespace tht {
 		// Block a thread until another unblocks it.
 	class rBlocker {
 	private:
-		rLocker Locker_;
-		rCore_ Core_;
+		mtx::rMutex
+			Local_,	// To protect access to below mutex.
+			Main_;	// Main mutex.
+		void ReleaseMutex_( mtx::rMutex &Mutex )
+		{
+			if ( Mutex != mtx::Undefined )
+				mtx::Delete( Mutex, true );
+
+			Mutex = mtx::Undefined;
+		}
+		void ReleaseMutexes_( void )
+		{
+			ReleaseMutex_( Local_ );
+			ReleaseMutex_( Main_ );
+		}
 	public:
 		void reset( bso::sBool P = true )
 		{
-			tol::reset( P, Locker_, Core_);
+			if ( P ) {
+				ReleaseMutexes_();
+			}
+
+			Local_ = Main_ = mtx::Undefined;
 		}
 		qCDTOR( rBlocker );
 		void Init( bso::sBool SkipPrefetching = false )
 		{
-			tol::Init( Locker_, Core_ );
+		qRH;
+		qRB;
+			ReleaseMutexes_();
 
-			if ( SkipPrefetching ) {
-				Core_.ThreadID = Undefined;
-			} else {
-				Core_.Lock();
-				Core_.ThreadID = GetTID();
+			Local_ = mtx::Create();
+			Main_ = mtx::Create();
+
+			if ( !SkipPrefetching ) {
+				mtx::Lock( Main_ );
 			}
+		qRR;
+			ReleaseMutexes_();
+		qRT;
+		qRE;
 		}
-		void Wait( bso::sBool IgnoreTarget = false )
+		void Wait( void )
 		{
 		qRH
-			rLockerHandler Locker;
+			mtx::rHandle Mutex;
 		qRB
-			Locker.Init( Locker_ );
+			Mutex.InitAndLock( Local_ );
 
-			if ( Core_.ThreadID == Undefined ) {
-				Core_.Lock();
-				Core_.ThreadID = GetTID();
-			} else 	if ( !IgnoreTarget && ( Core_.ThreadID != GetTID() ) )
-				qRFwk();
+			if ( mtx::TryToLock( Main_ ) )
+				mtx::Unlock( Main_ );
+			else
+				Mutex.Unlock();
 
-			Locker.Unlock();
-
-			Core_.Lock();
-
-			Locker.Lock();
-
-			Core_.ThreadID = Undefined;
-
-			Core_.Unlock();
+			mtx::Lock( Main_ );
 		qRR
 		qRT
 		qRE
 		}
-		void Unblock( bso::sBool IgnoreTarget = false )
+		bso::sBool IsBlocked(void)
 		{
+			bso::sBool Blocked = false;
 		qRH
-			rLockerHandler Locker;
+			mtx::rHandle Mutex;
 		qRB
-			Locker.Init( Locker_ );
+			Mutex.InitAndLock( Local_ );
 
-			if ( !IgnoreTarget && ( Core_.ThreadID == GetTID() ) )
-				qRFwk();
-
-			if ( Core_.ThreadID != Undefined )
-				Core_.Unlock();
+			Blocked = mtx::IsLocked(Main_);
 		qRR
 		qRT
+		qRE
+			return Blocked;
+		}
+		void Unblock( void )
+		{
+		qRH
+//			mtx::rMutex Mutex;	// Can not be used, because the destructor could be called after destruction of underlying mutes.
+			bso::sBool Locked = false;
+		qRB
+			mtx::Lock( Local_ );
+			Locked = true;
+
+			if ( mtx::IsLocked( Main_ ) ) {
+				mtx::Unlock( Local_ );
+				Locked = false;
+				mtx::Unlock( Main_ );
+			}
+		qRR
+		qRT
+			if ( Locked )
+				mtx::Unlock( Local_ );
 		qRE
 		}
 	};
@@ -344,11 +379,11 @@ namespace tht {
 	class rReadWrite
 	{
 	private:
-		mtx::rHandler Write_, Read_;
-		void Delete_( mtx::rHandler Handler )
+		mtx::rMutex Write_, Read_;
+		void Delete_( mtx::rMutex Mutex )
 		{
-			if ( Handler != mtx::Undefined )
-				mtx::Delete( Handler, true );
+			if ( Mutex != mtx::Undefined )
+				mtx::Delete( Mutex, true );
 		}
 	public:
 		void reset( bso::sBool P = true )
@@ -406,7 +441,7 @@ namespace tht {
 			return true;
 		}
 	};
-	
+
 }
 
 #endif

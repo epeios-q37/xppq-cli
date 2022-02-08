@@ -17,7 +17,7 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#define BCH__COMPILATION
+#define BCH_COMPILATION_
 
 #include "bch.h"
 
@@ -25,7 +25,7 @@
 
 using namespace bch;
 
-void bch::_GetRelations(
+void bch::GetRelations_(
 	const uys::untyped_storage_ &Sorted,
 	const uys::untyped_storage_ &Unsorted,
 	sdr::size__ Size,

@@ -17,7 +17,7 @@
 	along with the Epeios framework.  If not, see <http://www.gnu.org/licenses/>
 */
 
-#define THT__COMPILATION
+#define THT_COMPILATION_
 
 #include "tht.h"
 
@@ -36,6 +36,8 @@ using namespace tht;
 #else
 # error "Unknown compilation enviroment"
 #endif
+
+# include "cio.h"
 
 
 
@@ -66,7 +68,7 @@ void tht::Defer( void )
 	if( sched_yield() != 0 )
 		qRLbr();
 #else
-	#error
+#error
 #endif
 }
 

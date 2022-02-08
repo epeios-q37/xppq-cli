@@ -22,7 +22,7 @@
   <Import Project="Windows.targets"/>
   <Import Project="Details.props"/>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>343e383f-64bf-462b-b46a-3dbcf9a0207f</ProjectGuid>
+    <ProjectGuid/>
     <RootNamespace>xppq</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props"/>
@@ -34,7 +34,7 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Label="Configuration">
-    <PlatformToolset>$(DefaultPlatformToolset)_xp</PlatformToolset>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props"/>
   <ImportGroup Label="ExtensionSettings"/>
@@ -51,7 +51,7 @@
       <Command>copy $(TargetPath) $(ProjectDir)</Command>
     </PostBuildEvent>
     <ClCompile>
-      <PreprocessorDefinitions>E_ST;CI;APPVEYOR;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level3</WarningLevel>
     </ClCompile>
     <Link>
@@ -104,6 +104,7 @@
     <ClCompile Include="src/epeios/mtk.cpp"/>
     <ClCompile Include="src/epeios/mtx.cpp"/>
     <ClCompile Include="src/epeios/ntvstr.cpp"/>
+    <ClCompile Include="src/epeios/osd.cpp"/>
     <ClCompile Include="src/epeios/que.cpp"/>
     <ClCompile Include="src/epeios/rgstry.cpp"/>
     <ClCompile Include="src/epeios/sdr.cpp"/>
@@ -130,13 +131,13 @@
     <ClCompile Include="src/epeios/dlbrry.cpp"/>
     <ClCompile Include="src/epeios/plgn.cpp"/>
     <ClCompile Include="src/epeios/plgncore.cpp"/>
-    <ClCompile Include="src/epeios/sclargmnt.cpp"/>
+    <ClCompile Include="src/epeios/scla.cpp"/>
     <ClCompile Include="src/epeios/scli.cpp"/>
-    <ClCompile Include="src/epeios/sclmisc.cpp"/>
-    <ClCompile Include="src/epeios/sclerror.cpp"/>
-    <ClCompile Include="src/epeios/scllocale.cpp"/>
-    <ClCompile Include="src/epeios/sclrgstry.cpp"/>
-    <ClCompile Include="src/epeios/scltool.cpp"/>
+    <ClCompile Include="src/epeios/sclm.cpp"/>
+    <ClCompile Include="src/epeios/scle.cpp"/>
+    <ClCompile Include="src/epeios/scll.cpp"/>
+    <ClCompile Include="src/epeios/sclr.cpp"/>
+    <ClCompile Include="src/epeios/sclt.cpp"/>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets"/>
 </Project>

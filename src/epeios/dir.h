@@ -19,8 +19,8 @@
 
 // DIRectory
 
-#ifndef DIR__INC
-# define DIR__INC
+#ifndef DIR_INC_
+# define DIR_INC_
 
 # define DIR_NAME		"DIR"
 
